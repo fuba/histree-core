@@ -1,14 +1,14 @@
 # sample.zshrc
-# これは zsh-histree の設定例です。
-# 以下の行をあなたの .zshrc に追加するか、参考にしてください。
+# This is a sample configuration for histree-zsh.
+# Adjust the path to histree-zsh as needed.
 
-# zsh-histree のパス（リポジトリの場所に合わせて変更してください）
-export ZSH_histree_DIR="$HOME/path/to/zsh-histree"
+# Set the directory for histree-zsh (adjust according to your installation path)
+export HISTREE_ZSH_DIR="$HOME/path/to/histree-zsh"
 
-# ログファイルの保存先（必要に応じて変更可能）
-export ZSH_PWD_LOG_DIR="${HOME}/.zsh_pwd_log"
+# Set the log storage directory (optional)
+export ZSH_PWD_LOG_DIR="$HOME/.zsh_pwd_log"
 
-# zsh-histree の読み込み
-source "$ZSH_histree_DIR/histree.zsh"
+# Source the histree-zsh plugin
+source "$HISTREE_ZSH_DIR/histree.zsh"
 
-# これ以降、通常の zsh の設定を記述してください。
+# Additional zsh configurations can follow here.
