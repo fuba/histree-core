@@ -4,7 +4,7 @@
 set -e
 
 # Determine the installation directory (based on the script location)
-INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TARGET_DIR="${HOME}/.zsh-histree"
 
 echo "Installing zsh-histree to ${TARGET_DIR} ..."
@@ -12,10 +12,7 @@ echo "Installing zsh-histree to ${TARGET_DIR} ..."
 # Create target directory and copy files
 mkdir -p "${TARGET_DIR}/bin"
 cp -r "${INSTALL_DIR}/histree.zsh" "${TARGET_DIR}/"
-
-# Build the Go binary
-echo "Building histree binary..."
-(cd "${INSTALL_DIR}" && go build -o "${TARGET_DIR}/bin/histree" ./cmd/histree)
+cp bin/histree "${TARGET_DIR}/bin/"
 
 # Add configuration to .zshrc if not already present
 ZSHRC="${HOME}/.zshrc"

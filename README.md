@@ -36,12 +36,12 @@ This project was developed with the assistance of ChatGPT and GitHub Copilot.
     git clone https://github.com/fuba/zsh-histree.git
     ```
 
-2. Run the installation script:
+2. Run the following command to build and install zsh-histree:
     ```sh
-    ./install.sh
+    make install
     ```
 
-The install script will:
+The install process will:
 - Create the necessary directories
 - Build the Go binary
 - Add the configuration to your .zshrc
