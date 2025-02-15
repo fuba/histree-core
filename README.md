@@ -1,6 +1,6 @@
-# zsh-dirstory
+# zsh-histree
 
-`zsh-dirstory` は、実行したコマンドの履歴を、実行時のディレクトリ情報とともに記録し、ディレクトリ階層に沿った「物語（story）」として参照できる zsh プラグインです。  
+`zsh-histree` は、実行したコマンドの履歴を、実行時のディレクトリ情報とともに記録し、ディレクトリ階層に沿った「物語（story）」として参照できる zsh プラグインです。  
 各ディレクトリごとにログファイルを管理し、コマンド実行後の結果（終了ステータス）や、改行を含むコマンドも安全に記録します。
 
 ## 特徴
@@ -17,22 +17,22 @@
   各ファイルは最大 10,000 行に自動的に制限されます。
 
 - **簡単な抽出コマンド**  
-  `dirstory` コマンドを実行するだけで、現在のディレクトリ以下で実行されたコマンド履歴を表示できます。
+  `histree` コマンドを実行するだけで、現在のディレクトリ以下で実行されたコマンド履歴を表示できます。
 
 ## インストール
 
 1. 本リポジトリをクローンまたはダウンロードしてください。
 ```sh
-  git clone https://github.com/your-username/zsh-dirstory.git
+  git clone https://github.com/your-username/zsh-histree.git
   ```
-2. あなたの .zshrc に dirstory.zsh を読み込む設定を追加します。例:
+2. あなたの .zshrc に histree.zsh を読み込む設定を追加します。例:
 ```sh
 # .zshrc の末尾に追加
-source /path/to/zsh-dirstory/dirstory.zsh
+source /path/to/zsh-histree/histree.zsh
 ```
-※ リポジトリを ~/zsh-dirstory に配置した場合:
+※ リポジトリを ~/zsh-histree に配置した場合:
 ```sh
-echo "source ~/zsh-dirstory/dirstory.zsh" >> ~/.zshrc
+echo "source ~/zsh-histree/histree.zsh" >> ~/.zshrc
 ```
 もしくは、同梱の install.sh を実行すると自動で設定が追加されます。
 
@@ -41,7 +41,7 @@ echo "source ~/zsh-dirstory/dirstory.zsh" >> ~/.zshrc
 - コマンド実行後、ログが自動で記録されます。
 - 現在のディレクトリ以下で実行されたコマンド履歴を確認するには、ターミナルで以下を実行してください。
   ```sh
-  dirstory
+  histree
   ```
 
 ## カスタマイズ
