@@ -18,14 +18,16 @@ import (
 type OutputFormat string
 
 const (
-	FormatJSON     OutputFormat = "json"
-	FormatReadable OutputFormat = "readable"
+	FormatJSON    OutputFormat = "json"
+	FormatSimple  OutputFormat = "simple"
+	FormatVerbose OutputFormat = "verbose"
 )
 
 type HistoryEntry struct {
 	Command      string    `json:"command"`
 	Directory    string    `json:"directory"`
 	Timestamp    time.Time `json:"timestamp"`
+	ExitCode     int       `json:"exit_code"`
 	SessionLabel string    `json:"session_label"`
 }
 
@@ -92,6 +94,7 @@ func createTable(tx *sql.Tx) error {
 			command TEXT NOT NULL,
 			directory TEXT NOT NULL,
 			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+			exit_code INTEGER NOT NULL,
 			session_label TEXT NOT NULL
 		)
 	`)
@@ -117,10 +120,11 @@ func createIndexes(tx *sql.Tx) error {
 
 func addEntry(db *sql.DB, entry *HistoryEntry) error {
 	_, err := db.Exec(
-		"INSERT INTO history (command, directory, timestamp, session_label) VALUES (?, ?, ?, ?)",
+		"INSERT INTO history (command, directory, timestamp, exit_code, session_label) VALUES (?, ?, ?, ?, ?)",
 		entry.Command,
 		entry.Directory,
 		entry.Timestamp,
+		entry.ExitCode,
 		entry.SessionLabel,
 	)
 	if err != nil {
@@ -133,7 +137,7 @@ func getEntries(db *sql.DB, limit int, currentDir string) ([]HistoryEntry, error
 	entries := make([]HistoryEntry, 0, limit)
 
 	query := `
-		SELECT command, directory, timestamp, session_label
+		SELECT command, directory, timestamp, exit_code, session_label
 		FROM history 
 		WHERE directory LIKE ? || '%'
 		ORDER BY timestamp ASC
@@ -163,6 +167,7 @@ func getEntries(db *sql.DB, limit int, currentDir string) ([]HistoryEntry, error
 			&entry.Command,
 			&entry.Directory,
 			&entry.Timestamp,
+			&entry.ExitCode,
 			&entry.SessionLabel,
 		)
 		if err != nil {
@@ -191,15 +196,25 @@ func writeEntries(entries []HistoryEntry, w io.Writer, format OutputFormat) erro
 			if err := json.NewEncoder(bufW).Encode(entry); err != nil {
 				return fmt.Errorf("failed to encode JSON: %w", err)
 			}
-		case FormatReadable:
+		case FormatSimple:
+			if _, err := fmt.Fprintf(bufW, "%s\n", entry.Command); err != nil {
+				return fmt.Errorf("failed to write entry: %w", err)
+			}
+		case FormatVerbose:
 			command := entry.Command
 			if strings.HasPrefix(command, "{") && strings.HasSuffix(command, "}") {
 				command = fmt.Sprintf("%q", command)
 			}
 
-			if _, err := fmt.Fprintf(bufW, "%s [%s] (%s) %s\n",
+			exitStatus := ""
+			if entry.ExitCode != 0 {
+				exitStatus = fmt.Sprintf(" [%d]", entry.ExitCode)
+			}
+
+			if _, err := fmt.Fprintf(bufW, "%s [%s]%s <%s> %s\n",
 				entry.Timestamp.Format(time.RFC3339),
 				entry.Directory,
+				exitStatus,
 				entry.SessionLabel,
 				command); err != nil {
 				return fmt.Errorf("failed to write entry: %w", err)
@@ -220,14 +235,21 @@ func main() {
 	action := flag.String("action", "", "Action to perform: add or get")
 	limit := flag.Int("limit", 100, "Number of entries to retrieve")
 	currentDir := flag.String("dir", "", "Current directory for filtering entries")
-	format := flag.String("format", string(FormatReadable), "Output format: json or readable")
+	format := flag.String("format", string(FormatSimple), "Output format: json, simple, or verbose")
 	sessionLabel := flag.String("session", "", "Session label for command history (required for add action)")
+	verbose := flag.Bool("v", false, "Show verbose output (same as -format verbose)")
+	exitCode := flag.Int("exit", 0, "Exit code of the command")
 	flag.Parse()
 
 	if *dbPath == "" {
 		fmt.Fprintf(os.Stderr, "Error: -db parameter is required\n")
 		flag.Usage()
 		os.Exit(1)
+	}
+
+	// Override format if verbose flag is set
+	if *verbose {
+		*format = string(FormatVerbose)
 	}
 
 	db, err := initDB(*dbPath)
@@ -244,7 +266,7 @@ func main() {
 			flag.Usage()
 			os.Exit(1)
 		}
-		if err := handleAdd(db, *currentDir, *sessionLabel); err != nil {
+		if err := handleAdd(db, *currentDir, *sessionLabel, *exitCode); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to add entry: %v\n", err)
 			os.Exit(1)
 		}
@@ -261,7 +283,7 @@ func main() {
 	}
 }
 
-func handleAdd(db *sql.DB, currentDir string, sessionLabel string) error {
+func handleAdd(db *sql.DB, currentDir string, sessionLabel string, exitCode int) error {
 	var buf bytes.Buffer
 	if _, err := io.Copy(&buf, os.Stdin); err != nil {
 		return fmt.Errorf("failed to read command from stdin: %w", err)
@@ -281,6 +303,7 @@ func handleAdd(db *sql.DB, currentDir string, sessionLabel string) error {
 		Command:      cmd,
 		Directory:    dir,
 		Timestamp:    time.Now().UTC(),
+		ExitCode:     exitCode,
 		SessionLabel: sessionLabel,
 	}
 
