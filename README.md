@@ -1,53 +1,102 @@
-# histree-zsh
+# zsh-histree
 
-**histree-zsh** is a zsh plugin that logs your command history along with the execution directory context, allowing you to explore a hierarchical narrative of your shell activity.
+**zsh-histree** is a zsh plugin that logs your command history along with the execution directory context, allowing you to explore a hierarchical narrative of your shell activity.
+
+This project was developed with the assistance of ChatGPT and GitHub Copilot.
 
 ## Features
 
-- **Log Record Format**  
-  Each log record is stored in a 4-line format:
-  1. `timestamp<TAB>ulid<TAB>dir`
-  2. `result status`
-  3. `command` (if the command contains newlines, it is base64-encoded to keep it on one line)
-  4. An empty line (record separator)
+- **SQLite-Based Storage**  
+  Command history is stored in a SQLite database, providing reliable and efficient storage with:
+  - Optimized indexes for fast directory-based queries
+  - Transaction support for data integrity
+  - WAL mode for better concurrent access
 
-- **Directory-Based Management**  
-  Logs are stored in files under `$HOME/.zsh_pwd_log`, with one file per directory.  
-  Each file is automatically capped at a maximum of 10,000 lines.
+- **Directory-Aware History**  
+  Commands are stored with their execution directory context, allowing you to view history specific to your current directory and its subdirectories.
 
-- **Easy Retrieval**  
-  Simply run the `histree` command to display the command history executed in the current directory (including subdirectories).
+- **Session Tracking**
+  Each zsh session is uniquely identified with:
+  - Hostname of the machine
+  - Session start timestamp
+  - Process ID
+  These are combined into a human-readable session label (e.g., "hostname:20240215-123456:1234")
+
+- **Smart Command Output**
+  - Readable format: `timestamp [directory] (session) command`
+  - JSON format for programmatic access
+  - Proper handling of multi-line commands
+  - Intelligent escaping of special characters
 
 ## Installation
 
-1. Clone or download this repository:
+1. Clone this repository:
     ```sh
-    git clone https://github.com/your-username/histree-zsh.git
+    git clone https://github.com/your-username/zsh-histree.git
     ```
 
-2. Add the following line to your .zshrc to source the plugin:
+2. Run the installation script:
     ```sh
-    source /path/to/histree-zsh/histree.zsh
-    ```
-    For example, if you place the repository at ~/histree-zsh:
-    ```sh
-    echo "source ~/histree-zsh/histree.zsh" >> ~/.zshrc
+    ./install.sh
     ```
 
-3. Alternatively, run the included install.sh script to automatically add the source line to your .zshrc.
+The install script will:
+- Create the necessary directories
+- Build the Go binary
+- Add the configuration to your .zshrc
+- Set up the default database location
+
+## Configuration
+
+### Database Location
+By default, the history database is stored at `$HOME/.histree.db`. You can change this location by setting the `HISTREE_DB` environment variable in your `.zshrc`:
+
+```zsh
+export HISTREE_DB="$HOME/.config/histree/history.db"
+```
+
+### History Limit
+The number of history entries to display can be configured using the `HISTREE_LIMIT` environment variable (default: 100):
+
+```zsh
+export HISTREE_LIMIT=500
+```
+
+### Command Line Options
+
+When using the histree commands directly, the following options are available:
+
+```sh
+-db string      Path to SQLite database (required)
+-action string  Action to perform: add or get
+-dir string     Current directory for filtering entries
+-format string  Output format: json or readable (default "readable")
+-limit int      Number of entries to retrieve (default 100)
+-session string Session label for command history (required for add action)
+```
 
 ## Usage
-- Restart your terminal or source your .zshrc to activate histree-zsh.
-- After each command execution, a log entry is automatically recorded.
-- To display the command history for the current directory and its subdirectories, run:
 
-    ```sh
-    histree
-    ```
-## Customization
-- You can change the log storage directory by setting the ZSH_PWD_LOG_DIR environment variable. The default is $HOME/.zsh_pwd_log.
-- The ULID is generated using the system’s ulid command if available, or a fallback simple version otherwise.
+After installation, zsh-histree will automatically start logging your commands.
 
+To view command history:
+```sh
+histree          # View formatted history for current directory and subdirectories
+histree-json     # View history in JSON format
+```
+
+The history display includes:
+- Timestamp of command execution
+- Directory where the command was run (`[directory]`)
+- Session identifier (`(hostname:YYYYMMDD-HHMMSS:pid)`)
+- The command itself
+
+## Requirements
+
+- Zsh
+- Go (for building the binary)
+- SQLite
 
 ## License
-This project is licensed under the MIT License. 
+
+This project is licensed under the MIT License.
