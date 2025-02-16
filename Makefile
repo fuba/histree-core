@@ -14,8 +14,6 @@ clean:
 	rm -f bin/histree
 	rm -f ./test_histree.db
 
-install: all
-
 release:
 	@if [ -z "$$VERSION" ]; then \
 		echo "Usage: make release VERSION=v0.2.1"; \
