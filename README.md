@@ -25,15 +25,7 @@ This project was developed with the assistance of ChatGPT and GitHub Copilot.
 
 ## Installation
 
-1. Clone this repository:
-    ```sh
-    git clone https://github.com/fuba/histree-core.git
-    ```
-
-2. Run the following command to build and install histree-core:
-    ```sh
-    make install
-    ```
+Please install using the shell-specific implementation—for example, install histree-zsh for Zsh.
 
 ## Command Line Options
 
