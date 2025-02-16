@@ -17,7 +17,7 @@ import (
 
 // Version information
 const (
-	Version = "v0.2.1"
+	Version = "v0.2.3"
 )
 
 type OutputFormat string

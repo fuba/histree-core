@@ -2,16 +2,16 @@
 
 VERSION := $(shell git describe --tags --always --dirty)
 
-all: bin/histree
+all: bin/histree-core
 
-bin/histree: cmd/histree/*.go
-	go build -ldflags "-X main.Version=$(VERSION)" -o bin/histree ./cmd/histree
+bin/histree-core: cmd/histree/*.go
+	go build -ldflags "-X main.Version=$(VERSION)" -o bin/histree-core ./cmd/histree
 
 test:
 	go test -v ./...
 
 clean:
-	rm -f bin/histree
+	rm -f bin/histree-core
 	rm -f ./test_histree.db
 
 release:

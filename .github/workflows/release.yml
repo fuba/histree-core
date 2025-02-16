@@ -21,7 +21,7 @@ jobs:
     - name: Build
       run: |
         make
-        tar czf histree.tar.gz bin/histree README.md LICENSE
+        tar czf histree-core.tar.gz bin/histree-core README.md LICENSE
 
     - name: Get version from tag
       id: get_version
@@ -32,7 +32,7 @@ jobs:
       with:
         name: Release ${{ steps.get_version.outputs.VERSION }}
         files: |
-          histree.tar.gz
+          histree-core.tar.gz
         draft: false
         prerelease: false
         body: |
@@ -41,6 +41,6 @@ jobs:
           For a detailed list of changes, please see [CHANGELOG.md](CHANGELOG.md)
 
           ### Installation
-          1. Download the `histree.tar.gz` file
-          2. Extract it: `tar xzf histree.tar.gz`
-          3. Move the binary to your PATH: `sudo mv bin/histree /usr/local/bin/`
+          1. Download the `histree-core.tar.gz` file
+          2. Extract it: `tar xzf histree-core.tar.gz`
+          3. Move the binary to your PATH: `sudo mv bin/histree-core /usr/local/bin/`
