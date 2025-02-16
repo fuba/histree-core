@@ -5,6 +5,7 @@ HISTREE_HOME="${0:A:h}"
 HISTREE_BIN="$HISTREE_HOME/bin/histree"
 HISTREE_DB="${HISTREE_DB:-$HOME/.histree.db}"
 HISTREE_LIMIT="${HISTREE_LIMIT:-100}"
+HISTREE_HOSTNAME="${HOST:=$(hostname)}"
 
 # Build the binary if it doesn't exist
 if [[ ! -x $HISTREE_BIN ]]; then
@@ -12,13 +13,9 @@ if [[ ! -x $HISTREE_BIN ]]; then
     (cd "$HISTREE_HOME" && go build -o bin/histree ./cmd/histree)
 fi
 
-# Generate unique session label when the plugin is loaded
-typeset -g _HISTREE_START_TIME
-typeset -g _HISTREE_SESSION_LABEL
+# Store process ID when the plugin is loaded
 typeset -g _HISTREE_LAST_CMD
 typeset -g _HISTREE_LAST_EXIT_CODE
-_HISTREE_START_TIME=$(date +"%Y%m%d-%H%M%S")
-_HISTREE_SESSION_LABEL="${HOST:=$(hostname)}:${_HISTREE_START_TIME}:$$"
 
 # Function to add a command to history
 _histree_add_command() {
@@ -31,7 +28,8 @@ _histree_add_command() {
     fi
 
     echo "$cmd" | $HISTREE_BIN -db "$HISTREE_DB" -action add -dir "$PWD" \
-        -session "$_HISTREE_SESSION_LABEL" \
+        -hostname "$HISTREE_HOSTNAME" \
+        -pid $$ \
         -exit "$exit_code"
 }
 

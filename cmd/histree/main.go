@@ -24,11 +24,12 @@ const (
 )
 
 type HistoryEntry struct {
-	Command      string    `json:"command"`
-	Directory    string    `json:"directory"`
-	Timestamp    time.Time `json:"timestamp"`
-	ExitCode     int       `json:"exit_code"`
-	SessionLabel string    `json:"session_label"`
+	Command   string    `json:"command"`
+	Directory string    `json:"directory"`
+	Timestamp time.Time `json:"timestamp"`
+	ExitCode  int       `json:"exit_code"`
+	Hostname  string    `json:"hostname,omitempty"`
+	ProcessID int       `json:"process_id,omitempty"` // The process ID of the shell that executed the command
 }
 
 func initDB(dbPath string) (*sql.DB, error) {
@@ -95,7 +96,8 @@ func createTable(tx *sql.Tx) error {
 			directory TEXT NOT NULL,
 			timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
 			exit_code INTEGER NOT NULL,
-			session_label TEXT NOT NULL
+			hostname TEXT NOT NULL,
+			process_id INTEGER NOT NULL
 		)
 	`)
 	if err != nil {
@@ -120,12 +122,13 @@ func createIndexes(tx *sql.Tx) error {
 
 func addEntry(db *sql.DB, entry *HistoryEntry) error {
 	_, err := db.Exec(
-		"INSERT INTO history (command, directory, timestamp, exit_code, session_label) VALUES (?, ?, ?, ?, ?)",
+		"INSERT INTO history (command, directory, timestamp, exit_code, hostname, process_id) VALUES (?, ?, ?, ?, ?, ?)",
 		entry.Command,
 		entry.Directory,
 		entry.Timestamp,
 		entry.ExitCode,
-		entry.SessionLabel,
+		entry.Hostname,
+		entry.ProcessID,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to insert entry: %w", err)
@@ -137,7 +140,7 @@ func getEntries(db *sql.DB, limit int, currentDir string) ([]HistoryEntry, error
 	entries := make([]HistoryEntry, 0, limit)
 
 	query := `
-		SELECT command, directory, timestamp, exit_code, session_label
+		SELECT command, directory, timestamp, exit_code, hostname, process_id
 		FROM history 
 		WHERE directory LIKE ? || '%'
 		ORDER BY timestamp ASC
@@ -168,7 +171,8 @@ func getEntries(db *sql.DB, limit int, currentDir string) ([]HistoryEntry, error
 			&entry.Directory,
 			&entry.Timestamp,
 			&entry.ExitCode,
-			&entry.SessionLabel,
+			&entry.Hostname,
+			&entry.ProcessID,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan row: %w", err)
@@ -211,11 +215,10 @@ func writeEntries(entries []HistoryEntry, w io.Writer, format OutputFormat) erro
 				exitStatus = fmt.Sprintf(" [%d]", entry.ExitCode)
 			}
 
-			if _, err := fmt.Fprintf(bufW, "%s [%s]%s <%s> %s\n",
+			if _, err := fmt.Fprintf(bufW, "%s [%s]%s %s\n",
 				entry.Timestamp.Format(time.RFC3339),
 				entry.Directory,
 				exitStatus,
-				entry.SessionLabel,
 				command); err != nil {
 				return fmt.Errorf("failed to write entry: %w", err)
 			}
@@ -236,7 +239,8 @@ func main() {
 	limit := flag.Int("limit", 100, "Number of entries to retrieve")
 	currentDir := flag.String("dir", "", "Current directory for filtering entries")
 	format := flag.String("format", string(FormatSimple), "Output format: json, simple, or verbose")
-	sessionLabel := flag.String("session", "", "Session label for command history (required for add action)")
+	hostname := flag.String("hostname", "", "Hostname (required for add action)")
+	processID := flag.Int("pid", 0, "Process ID (required for add action)")
 	verbose := flag.Bool("v", false, "Show verbose output (same as -format verbose)")
 	exitCode := flag.Int("exit", 0, "Exit code of the command")
 	flag.Parse()
@@ -261,12 +265,17 @@ func main() {
 
 	switch *action {
 	case "add":
-		if *sessionLabel == "" {
-			fmt.Fprintf(os.Stderr, "Error: -session parameter is required for add action\n")
+		if *hostname == "" {
+			fmt.Fprintf(os.Stderr, "Error: -hostname parameter is required for add action\n")
 			flag.Usage()
 			os.Exit(1)
 		}
-		if err := handleAdd(db, *currentDir, *sessionLabel, *exitCode); err != nil {
+		if *processID == 0 {
+			fmt.Fprintf(os.Stderr, "Error: -pid parameter is required for add action\n")
+			flag.Usage()
+			os.Exit(1)
+		}
+		if err := handleAdd(db, *currentDir, *hostname, *processID, *exitCode); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to add entry: %v\n", err)
 			os.Exit(1)
 		}
@@ -283,7 +292,7 @@ func main() {
 	}
 }
 
-func handleAdd(db *sql.DB, currentDir string, sessionLabel string, exitCode int) error {
+func handleAdd(db *sql.DB, currentDir string, hostname string, processID int, exitCode int) error {
 	var buf bytes.Buffer
 	if _, err := io.Copy(&buf, os.Stdin); err != nil {
 		return fmt.Errorf("failed to read command from stdin: %w", err)
@@ -300,11 +309,12 @@ func handleAdd(db *sql.DB, currentDir string, sessionLabel string, exitCode int)
 	}
 
 	entry := HistoryEntry{
-		Command:      cmd,
-		Directory:    dir,
-		Timestamp:    time.Now().UTC(),
-		ExitCode:     exitCode,
-		SessionLabel: sessionLabel,
+		Command:   cmd,
+		Directory: dir,
+		Timestamp: time.Now().UTC(),
+		ExitCode:  exitCode,
+		Hostname:  hostname,
+		ProcessID: processID,
 	}
 
 	return addEntry(db, &entry)
