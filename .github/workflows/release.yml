@@ -21,7 +21,7 @@ jobs:
     - name: Build
       run: |
         make
-        tar czf histree.tar.gz bin/histree histree.zsh README.md LICENSE
+        tar czf histree.tar.gz bin/histree README.md LICENSE
 
     - name: Get version from tag
       id: get_version
@@ -38,21 +38,9 @@ jobs:
         body: |
           ## Changes in ${{ steps.get_version.outputs.VERSION }}
 
-          ### Breaking Changes
-          - Remove session_label concept, replace with hostname and process_id
-          - Update database schema (migration script provided)
-
-          ### Features
-          - Add version information (`-version` flag)
-          - Add explicit hostname and process_id tracking
-          - Improve error handling in database operations
+          For a detailed list of changes, please see [CHANGELOG.md](CHANGELOG.md)
 
           ### Installation
           1. Download the `histree.tar.gz` file
           2. Extract it: `tar xzf histree.tar.gz`
-          3. Run the installation: `make install`
-
-          If you're upgrading from v0.1.x, please run the migration script:
-          ```bash
-          ./scripts/migrate_v0.1_v0.2.sh
-          ```
+          3. Move the binary to your PATH: `sudo mv bin/histree /usr/local/bin/`
