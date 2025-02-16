@@ -1,6 +1,6 @@
-# zsh-histree
+# histree-core
 
-**zsh-histree** is a zsh plugin that logs your command history along with the execution directory context, allowing you to explore a hierarchical narrative of your shell activity.
+**histree-core** is a zsh plugin that logs your command history along with the execution directory context, allowing you to explore a hierarchical narrative of your shell activity.
 
 This project was developed with the assistance of ChatGPT and GitHub Copilot.
 
@@ -34,10 +34,10 @@ This project was developed with the assistance of ChatGPT and GitHub Copilot.
 
 1. Clone this repository:
     ```sh
-    git clone https://github.com/fuba/zsh-histree.git
+    git clone https://github.com/fuba/histree-core.git
     ```
 
-2. Run the following command to build and install zsh-histree:
+2. Run the following command to build and install histree-core:
     ```sh
     make install
     ```
@@ -82,7 +82,7 @@ When using the histree commands directly, the following options are available:
 
 ## Usage
 
-After installation, zsh-histree will automatically start logging your commands.
+After installation, histree-core will automatically start logging your commands.
 
 View command history in different formats:
 ```sh
@@ -149,7 +149,7 @@ $ histree -v           # Different directory shows different history
 2024-02-15T10:36:00Z [/home/user/another-project] git commit -m "Update README"
 ```
 
-This example demonstrates how zsh-histree helps track your development workflow across different directories and projects, maintaining the context of your work.
+This example demonstrates how histree-core helps track your development workflow across different directories and projects, maintaining the context of your work.
 
 ## Requirements
 
