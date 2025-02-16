@@ -15,17 +15,18 @@ This project was developed with the assistance of ChatGPT and GitHub Copilot.
 - **Directory-Aware History**  
   Commands are stored with their execution directory context, allowing you to view history specific to your current directory and its subdirectories.
 
-- **Session Tracking**
-  Each zsh session is uniquely identified with:
+- **Shell Context Tracking**
+  Each command is stored with its execution context:
   - Hostname of the machine
-  - Session start timestamp
-  - Process ID
-  These are combined into a human-readable session label (e.g., "hostname:20240215-123456:1234")
+  - Shell process ID
+  - Exit code
+  - Timestamp (UTC)
+  - Working directory
 
 - **Smart Command Output**
   - Simple format: `command`
-  - Verbose format: `timestamp [directory] (session) command`
-  - JSON format for programmatic access
+  - Verbose format: `timestamp [directory] [exit_code] command`
+  - JSON format for programmatic access with full context
   - Proper handling of multi-line commands
   - Intelligent escaping of special characters
 
@@ -73,7 +74,8 @@ When using the histree commands directly, the following options are available:
 -dir string     Current directory for filtering entries
 -format string  Output format: json, simple, or verbose (default "simple")
 -limit int      Number of entries to retrieve (default 100)
--session string Session label for command history (required for add action)
+-hostname       Hostname for command history (required for add action)
+-pid           Process ID of the shell (required for add action)
 -exit int       Exit code of the command
 -v              Show verbose output (same as -format verbose)
 ```
@@ -89,23 +91,27 @@ npm install
 npm run build
 git status
 
-$ histree -v     # Verbose format with all details
-2024-02-15T15:04:30Z [/home/user/projects/web-app] <laptop:20240215-150430:1234> npm install
-2024-02-15T15:05:15Z [/home/user/projects/web-app] <laptop:20240215-150430:1234> npm run build
-2024-02-15T15:06:00Z [/home/user/projects/web-app] <laptop:20240215-150430:1234> git status
+$ histree -v     # Verbose format with timestamp, directory and exit code
+2024-02-15T15:04:30Z [/home/user/projects/web-app] npm install
+2024-02-15T15:05:15Z [/home/user/projects/web-app] [1] npm run build
+2024-02-15T15:06:00Z [/home/user/projects/web-app] git status
 
-$ histree -json  # JSON format for programmatic use
-{"command":"npm install","directory":"/home/user/projects/web-app","timestamp":"2024-02-15T15:04:30Z","exit_code":0,"session_label":"laptop:20240215-150430:1234"}
-{"command":"npm run build","directory":"/home/user/projects/web-app","timestamp":"2024-02-15T15:05:15Z","exit_code":1,"session_label":"laptop:20240215-150430:1234"}
-{"command":"git status","directory":"/home/user/projects/web-app","timestamp":"2024-02-15T15:06:00Z","exit_code":0,"session_label":"laptop:20240215-150430:1234"}
+$ histree -json  # JSON format with full context for programmatic use
+{"command":"npm install","directory":"/home/user/projects/web-app","timestamp":"2024-02-15T15:04:30Z","exit_code":0,"hostname":"laptop","process_id":1234}
+{"command":"npm run build","directory":"/home/user/projects/web-app","timestamp":"2024-02-15T15:05:15Z","exit_code":1,"hostname":"laptop","process_id":1234}
+{"command":"git status","directory":"/home/user/projects/web-app","timestamp":"2024-02-15T15:06:00Z","exit_code":0,"hostname":"laptop","process_id":1234}
 ```
 
 The verbose output format (`histree -v`) includes:
 - Full timestamp (RFC3339 format)
 - Working directory
 - Exit code (if non-zero)
-- Session identifier
 - The command itself
+
+The JSON format includes additional context:
+- All information from verbose format
+- Hostname of the machine
+- Process ID of the shell that executed the command
 
 ### Example Session
 
@@ -125,22 +131,22 @@ $ git commit -m "Update README"
 
 $ cd ~/projects/web-app
 $ histree -v           # View detailed history in current directory
-2024-02-15T10:30:15Z [/home/user/projects/web-app] <laptop:20240215-103012:1234> npm install
-2024-02-15T10:31:20Z [/home/user/projects/web-app] <laptop:20240215-103012:1234> npm run build
-2024-02-15T10:31:45Z [/home/user/projects/web-app/dist] <laptop:20240215-103012:1234> ls -la
-2024-02-15T10:32:10Z [/home/user/projects/web-app] <laptop:20240215-103012:1234> git status
+2024-02-15T10:30:15Z [/home/user/projects/web-app] npm install
+2024-02-15T10:31:20Z [/home/user/projects/web-app] [1] npm run build
+2024-02-15T10:31:45Z [/home/user/projects/web-app/dist] ls -la
+2024-02-15T10:32:10Z [/home/user/projects/web-app] git status
 
 $ histree -json        # View history in JSON format
-{"command":"npm install","directory":"/home/user/projects/web-app","timestamp":"2024-02-15T10:30:15Z","session_label":"laptop:20240215-103012:1234"}
-{"command":"npm run build","directory":"/home/user/projects/web-app","timestamp":"2024-02-15T10:31:20Z","session_label":"laptop:20240215-103012:1234"}
-{"command":"ls -la","directory":"/home/user/projects/web-app/dist","timestamp":"2024-02-15T10:31:45Z","session_label":"laptop:20240215-103012:1234"}
-{"command":"git status","directory":"/home/user/projects/web-app","timestamp":"2024-02-15T10:32:10Z","session_label":"laptop:20240215-103012:1234"}
+{"command":"npm install","directory":"/home/user/projects/web-app","timestamp":"2024-02-15T10:30:15Z","exit_code":0,"hostname":"laptop","process_id":1234}
+{"command":"npm run build","directory":"/home/user/projects/web-app","timestamp":"2024-02-15T10:31:20Z","exit_code":1,"hostname":"laptop","process_id":1234}
+{"command":"ls -la","directory":"/home/user/projects/web-app/dist","timestamp":"2024-02-15T10:31:45Z","exit_code":0,"hostname":"laptop","process_id":1234}
+{"command":"git status","directory":"/home/user/projects/web-app","timestamp":"2024-02-15T10:32:10Z","exit_code":0,"hostname":"laptop","process_id":1234}
 
 $ cd ~/another-project
 $ histree -v           # Different directory shows different history
-2024-02-15T10:35:00Z [/home/user/another-project] <laptop:20240215-103012:1234> vim README.md
-2024-02-15T10:35:30Z [/home/user/another-project] <laptop:20240215-103012:1234> git add README.md
-2024-02-15T10:36:00Z [/home/user/another-project] <laptop:20240215-103012:1234> git commit -m "Update README"
+2024-02-15T10:35:00Z [/home/user/another-project] vim README.md
+2024-02-15T10:35:30Z [/home/user/another-project] git add README.md
+2024-02-15T10:36:00Z [/home/user/another-project] git commit -m "Update README"
 ```
 
 This example demonstrates how zsh-histree helps track your development workflow across different directories and projects, maintaining the context of your work.

@@ -29,7 +29,7 @@ type HistoryEntry struct {
 	Timestamp time.Time `json:"timestamp"`
 	ExitCode  int       `json:"exit_code"`
 	Hostname  string    `json:"hostname,omitempty"`
-	ProcessID int       `json:"process_id,omitempty"`
+	ProcessID int       `json:"process_id,omitempty"` // The process ID of the shell that executed the command
 }
 
 func initDB(dbPath string) (*sql.DB, error) {
