@@ -85,10 +85,10 @@ $ git commit -m "Update README"
 
 $ cd ~/projects/web-app
 $ histree -v           # View detailed history in current directory
-2024-02-15T10:30:15Z [/home/user/projects/web-app] <laptop:20240215-103012:1234> npm install
-2024-02-15T10:31:20Z [/home/user/projects/web-app] <laptop:20240215-103012:1234> npm run build
-2024-02-15T10:31:45Z [/home/user/projects/web-app/dist] <laptop:20240215-103012:1234> ls -la
-2024-02-15T10:32:10Z [/home/user/projects/web-app] <laptop:20240215-103012:1234> git status
+2024-02-15T10:30:15Z [/home/user/projects/web-app] npm install
+2024-02-15T10:31:20Z [/home/user/projects/web-app] npm run build
+2024-02-15T10:31:45Z [/home/user/projects/web-app/dist] ls -la
+2024-02-15T10:32:10Z [/home/user/projects/web-app] git status
 
 $ histree -json        # View history in JSON format
 {"command":"npm install","directory":"/home/user/projects/web-app","timestamp":"2024-02-15T10:30:15Z","session_label":"laptop:20240215-103012:1234"}
@@ -98,9 +98,9 @@ $ histree -json        # View history in JSON format
 
 $ cd ~/another-project
 $ histree -v           # Different directory shows different history
-2024-02-15T10:35:00Z [/home/user/another-project] <laptop:20240215-103012:1234> vim README.md
-2024-02-15T10:35:30Z [/home/user/another-project] <laptop:20240215-103012:1234> git add README.md
-2024-02-15T10:36:00Z [/home/user/another-project] <laptop:20240215-103012:1234> git commit -m "Update README"
+2024-02-15T10:35:00Z [/home/user/another-project] vim README.md
+2024-02-15T10:35:30Z [/home/user/another-project] git add README.md
+2024-02-15T10:36:00Z [/home/user/another-project] git commit -m "Update README"
 ```
 
 This example demonstrates how histree helps track your development workflow across different directories and projects, maintaining the context of your work.
