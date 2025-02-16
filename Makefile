@@ -1,30 +1,4 @@
-# Define the Go binary name and source directory
-BINARY_NAME=histree
-SOURCE_DIR=./cmd/histree
-
-# Default target: build the binary and run tests
-all: build test
-
-# Build the Go binary
-build:
-	go build -o bin/$(BINARY_NAME) $(SOURCE_DIR)/main.go
-
-# Run tests
-test:
-	go test -v $(SOURCE_DIR)
-
-# Install the binary and setup configuration
-install: build
-	./scripts/install.sh
-
-# Clean up generated files
-clean:
-	rm -f bin/$(BINARY_NAME)
-	rm -f ./test_histree.db
-
-.PHONY: all build test install clean
-
-.PHONY: all test clean install release
+.PHONY: all build test clean install release
 
 VERSION := $(shell git describe --tags --always --dirty)
 
@@ -38,6 +12,7 @@ test:
 
 clean:
 	rm -f bin/histree
+	rm -f ./test_histree.db
 
 install: all
 	@echo "Installing histree..."
