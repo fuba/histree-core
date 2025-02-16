@@ -15,6 +15,11 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+// Version information
+const (
+	Version = "v0.2.0"
+)
+
 type OutputFormat string
 
 const (
@@ -234,6 +239,7 @@ func writeEntries(entries []HistoryEntry, w io.Writer, format OutputFormat) erro
 }
 
 func main() {
+	version := flag.Bool("version", false, "Show version information")
 	dbPath := flag.String("db", "", "Path to SQLite database (required)")
 	action := flag.String("action", "", "Action to perform: add or get")
 	limit := flag.Int("limit", 100, "Number of entries to retrieve")
@@ -244,6 +250,11 @@ func main() {
 	verbose := flag.Bool("v", false, "Show verbose output (same as -format verbose)")
 	exitCode := flag.Int("exit", 0, "Exit code of the command")
 	flag.Parse()
+
+	if *version {
+		fmt.Printf("histree %s\n", Version)
+		os.Exit(0)
+	}
 
 	if *dbPath == "" {
 		fmt.Fprintf(os.Stderr, "Error: -db parameter is required\n")

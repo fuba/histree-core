@@ -1,0 +1,58 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+
+    - name: Build
+      run: |
+        make
+        tar czf histree.tar.gz bin/histree histree.zsh README.md LICENSE
+
+    - name: Get version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: Release ${{ steps.get_version.outputs.VERSION }}
+        files: |
+          histree.tar.gz
+        draft: false
+        prerelease: false
+        body: |
+          ## Changes in ${{ steps.get_version.outputs.VERSION }}
+
+          ### Breaking Changes
+          - Remove session_label concept, replace with hostname and process_id
+          - Update database schema (migration script provided)
+
+          ### Features
+          - Add version information (`-version` flag)
+          - Add explicit hostname and process_id tracking
+          - Improve error handling in database operations
+
+          ### Installation
+          1. Download the `histree.tar.gz` file
+          2. Extract it: `tar xzf histree.tar.gz`
+          3. Run the installation: `make install`
+
+          If you're upgrading from v0.1.x, please run the migration script:
+          ```bash
+          ./scripts/migrate_v0.1_v0.2.sh
+          ```
