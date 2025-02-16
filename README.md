@@ -2,6 +2,8 @@
 
 A command-line tool that provides the core functionality for storing and retrieving shell command history with directory context in SQLite database.
 
+This project was developed with the assistance of ChatGPT and GitHub Copilot.
+
 ## Features
 
 - **SQLite-Based Storage**  
