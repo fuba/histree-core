@@ -144,12 +144,16 @@ func addEntry(db *sql.DB, entry *HistoryEntry) error {
 func getEntries(db *sql.DB, limit int, currentDir string) ([]HistoryEntry, error) {
 	entries := make([]HistoryEntry, 0, limit)
 
+	// Modified query to get the last N entries in chronological order
 	query := `
-		SELECT command, directory, timestamp, exit_code, hostname, process_id
-		FROM history 
-		WHERE directory LIKE ? || '%'
-		ORDER BY timestamp ASC
-		LIMIT ?
+		WITH recent_entries AS (
+			SELECT command, directory, timestamp, exit_code, hostname, process_id
+			FROM history 
+			WHERE directory = ? OR directory LIKE ? || '/%'
+			ORDER BY timestamp DESC
+			LIMIT ?
+		)
+		SELECT * FROM recent_entries ORDER BY timestamp ASC
 	`
 
 	tx, err := db.Begin()
@@ -163,7 +167,8 @@ func getEntries(db *sql.DB, limit int, currentDir string) ([]HistoryEntry, error
 		return nil, fmt.Errorf("failed to set page size: %w", err)
 	}
 
-	rows, err := tx.Query(query, currentDir, limit)
+	// Pass currentDir twice for the two placeholders (exact match and LIKE pattern)
+	rows, err := tx.Query(query, currentDir, currentDir, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query entries: %w", err)
 	}
