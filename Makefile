@@ -18,7 +18,7 @@ install: all
 
 release:
 	@if [ -z "$$VERSION" ]; then \
-		echo "Usage: make release VERSION=v0.2.0"; \
+		echo "Usage: make release VERSION=v0.2.1"; \
 		exit 1; \
 	fi
 	@if [ -n "$$(git status --porcelain)" ]; then \
