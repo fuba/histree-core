@@ -1,4 +1,4 @@
-module github.com/ec/zsh-histree
+module github.com/ec/histree-core
 
 go 1.18
 

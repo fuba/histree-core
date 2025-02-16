@@ -15,8 +15,6 @@ clean:
 	rm -f ./test_histree.db
 
 install: all
-	@echo "Installing histree..."
-	@./scripts/install.sh
 
 release:
 	@if [ -z "$$VERSION" ]; then \
