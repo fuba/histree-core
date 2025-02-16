@@ -25,7 +25,7 @@ This project was developed with the assistance of ChatGPT and GitHub Copilot.
 
 ## Installation
 
-Please install using the shell-specific implementation—for example, install histree-zsh for Zsh.
+Please install using the shell-specific implementation—for example, install [histree-zsh](https://github.com/fuba/histree-zsh) for Zsh.
 
 ## Command Line Options
 
