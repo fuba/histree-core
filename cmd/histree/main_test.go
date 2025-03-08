@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -119,5 +121,96 @@ func TestGetEntries(t *testing.T) {
 			got.ProcessID != want.ProcessID {
 			t.Errorf("Entry %d does not match: got %+v, want %+v", i, got, want)
 		}
+	}
+}
+
+// TestFormatVerboseWithTimezone tests that the FormatVerbose output
+// correctly converts UTC timestamps to local timezone
+func TestFormatVerboseWithTimezone(t *testing.T) {
+	// Create a test entry with a fixed UTC time
+	fixedUTCTime := time.Date(2023, 5, 15, 12, 30, 0, 0, time.UTC)
+	entry := HistoryEntry{
+		Command:   "echo 'timezone test'",
+		Directory: "/home/user/test",
+		Timestamp: fixedUTCTime,
+		ExitCode:  0,
+		Hostname:  "test-host",
+		ProcessID: 12345,
+	}
+
+	// Test output with verbose format
+	var buf bytes.Buffer
+	if err := writeEntries([]HistoryEntry{entry}, &buf, FormatVerbose); err != nil {
+		t.Fatalf("Failed to write entries: %v", err)
+	}
+
+	outputStr := buf.String()
+
+	// Expected output should have the local time, not UTC
+	localTime := fixedUTCTime.Local()
+	expectedTimePrefix := localTime.Format(time.RFC3339)
+
+	if !strings.Contains(outputStr, expectedTimePrefix) {
+		t.Errorf("Expected output to contain local time %s, got: %s", expectedTimePrefix, outputStr)
+	}
+
+	// The output should NOT contain the UTC time
+	utcTimePrefix := fixedUTCTime.Format(time.RFC3339)
+	if utcTimePrefix != expectedTimePrefix && strings.Contains(outputStr, utcTimePrefix) {
+		t.Errorf("Output should not contain UTC time %s, got: %s", utcTimePrefix, outputStr)
+	}
+}
+
+// TestFormatVerboseWithSpecificTimezones tests the timestamp display in different timezones
+func TestFormatVerboseWithSpecificTimezones(t *testing.T) {
+	// Save original timezone
+	originalTZ := os.Getenv("TZ")
+	defer os.Setenv("TZ", originalTZ)
+
+	// Test with a few different timezones
+	testTimezones := []struct {
+		tz       string
+		expected string // Expected hour part of the output (varies by timezone)
+	}{
+		{"UTC", "12:30"},
+		{"America/New_York", "08:30"}, // UTC-4 (might vary with DST)
+		{"Asia/Tokyo", "21:30"},       // UTC+9
+	}
+
+	// Fixed UTC time for testing
+	fixedUTCTime := time.Date(2023, 5, 15, 12, 30, 0, 0, time.UTC)
+
+	for _, tc := range testTimezones {
+		t.Run("Timezone_"+tc.tz, func(t *testing.T) {
+			// Set the timezone for this test
+			os.Setenv("TZ", tc.tz)
+			loc, err := time.LoadLocation(tc.tz)
+			if err != nil {
+				t.Fatalf("Failed to load location for %s: %v", tc.tz, err)
+			}
+			time.Local = loc
+
+			entry := HistoryEntry{
+				Command:   "echo 'timezone test'",
+				Directory: "/home/user/test",
+				Timestamp: fixedUTCTime,
+				ExitCode:  0,
+				Hostname:  "test-host",
+				ProcessID: 12345,
+			}
+
+			var buf bytes.Buffer
+			if err := writeEntries([]HistoryEntry{entry}, &buf, FormatVerbose); err != nil {
+				t.Fatalf("Failed to write entries in timezone %s: %v", tc.tz, err)
+			}
+
+			outputStr := buf.String()
+
+			// Check if the output contains the expected time format in the current timezone
+			if !strings.Contains(outputStr, tc.expected) {
+				t.Errorf("In timezone %s: Expected time containing %s, got: %s",
+					tc.tz, tc.expected, outputStr)
+			}
+		})
 	}
 }
