@@ -25,7 +25,35 @@ This project was developed with the assistance of ChatGPT and GitHub Copilot.
 
 ## Installation
 
-Please install using the shell-specific implementation—for example, install [histree-zsh](https://github.com/fuba/histree-zsh) for Zsh.
+### Using as a Command-Line Tool
+
+#### Go Install (recommended)
+```sh
+go install github.com/ec/histree-core/cmd/histree@latest
+```
+
+#### Building from Source
+```sh
+git clone https://github.com/ec/histree-core.git
+cd histree-core
+make build
+```
+
+Shell-specific implementations are also available—for example, install [histree-zsh](https://github.com/fuba/histree-zsh) for Zsh.
+
+### Using as a Library
+
+Add histree-core to your Go project:
+
+```sh
+go get github.com/ec/histree-core
+```
+
+Then import the package in your Go code:
+
+```go
+import "github.com/ec/histree-core/pkg/histree"
+```
 
 ## Command Line Options
 
@@ -64,6 +92,59 @@ command
   "exit_code": 0,
   "hostname": "host",
   "process_id": 1234
+}
+```
+
+## Library Usage
+
+The histree-core package can be used as a library in your Go applications:
+
+```go
+package main
+
+import (
+	"fmt"
+	"os"
+	"time"
+
+	"github.com/ec/histree-core/pkg/histree"
+)
+
+func main() {
+	// Open or create a history database
+	db, err := histree.OpenDB("path/to/history.db")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to open database: %v\n", err)
+		os.Exit(1)
+	}
+	defer db.Close()
+
+	// Add a new entry
+	entry := &histree.HistoryEntry{
+		Command:   "ls -la",
+		Directory: "/home/user/projects",
+		Timestamp: time.Now().UTC(),
+		ExitCode:  0,
+		Hostname:  "myhost",
+		ProcessID: 1234,
+	}
+	if err := db.AddEntry(entry); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to add entry: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Retrieve history entries
+	entries, err := db.GetEntries(10, "/home/user/projects")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to get entries: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Output entries in verbose format
+	if err := histree.WriteEntries(entries, os.Stdout, histree.FormatVerbose); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to write entries: %v\n", err)
+		os.Exit(1)
+	}
 }
 ```
 
@@ -107,7 +188,7 @@ This example demonstrates how histree helps track your development workflow acro
 
 ## Requirements
 
-- Go (for building the binary)
+- Go 1.18 or later (for building the binary and using as a library)
 - SQLite
 
 ## License
