@@ -148,14 +148,14 @@ func TestFormatVerboseWithTimezone(t *testing.T) {
 
 	// Expected output should have the local time, not UTC
 	localTime := fixedUTCTime.Local()
-	expectedTimePrefix := localTime.Format(time.RFC3339)
+	expectedTimePrefix := localTime.Format("2006-01-02T15:04:05")
 
 	if !strings.Contains(outputStr, expectedTimePrefix) {
 		t.Errorf("Expected output to contain local time %s, got: %s", expectedTimePrefix, outputStr)
 	}
 
 	// The output should NOT contain the UTC time
-	utcTimePrefix := fixedUTCTime.Format(time.RFC3339)
+	utcTimePrefix := fixedUTCTime.Format("2006-01-02T15:04:05")
 	if utcTimePrefix != expectedTimePrefix && strings.Contains(outputStr, utcTimePrefix) {
 		t.Errorf("Output should not contain UTC time %s, got: %s", utcTimePrefix, outputStr)
 	}
@@ -206,7 +206,7 @@ func TestFormatVerboseWithSpecificTimezones(t *testing.T) {
 
 			outputStr := buf.String()
 
-			// Check if the output contains the expected time format in the current timezone
+			// Check if the output contains the expected time format in the current timezone without timezone offset
 			if !strings.Contains(outputStr, tc.expected) {
 				t.Errorf("In timezone %s: Expected time containing %s, got: %s",
 					tc.tz, tc.expected, outputStr)

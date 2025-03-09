@@ -229,7 +229,7 @@ func writeEntries(entries []HistoryEntry, w io.Writer, format OutputFormat) erro
 			localTime := entry.Timestamp.Local()
 
 			if _, err := fmt.Fprintf(bufW, "%s [%s]%s %s\n",
-				localTime.Format(time.RFC3339),
+				localTime.Format("2006-01-02T15:04:05"),
 				entry.Directory,
 				exitStatus,
 				command); err != nil {
