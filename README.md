@@ -29,12 +29,12 @@ This project was developed with the assistance of ChatGPT and GitHub Copilot.
 
 #### Go Install (recommended)
 ```sh
-go install github.com/ec/histree-core/cmd/histree@latest
+go install github.com/fuba/histree-core/cmd/histree@latest
 ```
 
 #### Building from Source
 ```sh
-git clone https://github.com/ec/histree-core.git
+git clone https://github.com/fuba/histree-core.git
 cd histree-core
 make build
 ```
@@ -46,13 +46,13 @@ Shell-specific implementations are also available—for example, install [histre
 Add histree-core to your Go project:
 
 ```sh
-go get github.com/ec/histree-core
+go get github.com/fuba/histree-core
 ```
 
 Then import the package in your Go code:
 
 ```go
-import "github.com/ec/histree-core/pkg/histree"
+import "github.com/fuba/histree-core/pkg/histree"
 ```
 
 ## Command Line Options
@@ -107,7 +107,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/ec/histree-core/pkg/histree"
+	"github.com/fuba/histree-core/pkg/histree"
 )
 
 func main() {
