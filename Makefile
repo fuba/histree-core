@@ -4,8 +4,8 @@ VERSION := $(shell git describe --tags --always --dirty)
 
 all: bin/histree-core
 
-bin/histree-core: cmd/histree/*.go
-	go build -ldflags "-X main.Version=$(VERSION)" -o bin/histree-core ./cmd/histree
+bin/histree-core: cmd/histree-core/*.go
+	go build -ldflags "-X main.Version=$(VERSION)" -o bin/histree-core ./cmd/histree-core
 
 test:
 	go test -v ./...
