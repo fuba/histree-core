@@ -11,7 +11,7 @@ import (
 
 // Version information
 const (
-	Version = "v0.2.3"
+	Version = "v0.3.3"
 )
 
 // OutputFormat defines how history entries are formatted when displayed
