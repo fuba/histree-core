@@ -2,31 +2,25 @@ package main
 
 import (
 	"bytes"
-	"database/sql"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/ec/histree-core/pkg/histree"
 )
 
-func setupTestDB(t *testing.T) (*sql.DB, func()) {
+func setupTestDB(t *testing.T) (*histree.DB, func()) {
 	dbPath := "./test_histree.db"
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := histree.OpenDB(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open test database: %v", err)
-	}
-
-	if err := createSchema(db); err != nil {
-		t.Fatalf("Failed to create schema: %v", err)
 	}
 
 	cleanup := func() {
 		db.Close()
 		os.Remove(dbPath)
 	}
-
 	return db, cleanup
 }
 
@@ -34,7 +28,7 @@ func TestAddEntry(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	entry := &HistoryEntry{
+	entry := &histree.HistoryEntry{
 		Command:   "echo 'Hello, World!'",
 		Directory: "/home/user",
 		Timestamp: time.Now().UTC(),
@@ -43,7 +37,7 @@ func TestAddEntry(t *testing.T) {
 		ProcessID: 12345,
 	}
 
-	if err := addEntry(db, entry); err != nil {
+	if err := db.AddEntry(entry); err != nil {
 		t.Fatalf("Failed to add entry: %v", err)
 	}
 
@@ -56,10 +50,11 @@ func TestAddEntry(t *testing.T) {
 	var count int
 	for rows.Next() {
 		count++
-		var e HistoryEntry
+		var e histree.HistoryEntry
 		if err := rows.Scan(&e.Command, &e.Directory, &e.Timestamp, &e.ExitCode, &e.Hostname, &e.ProcessID); err != nil {
 			t.Fatalf("Failed to scan row: %v", err)
 		}
+
 		if e.Command != entry.Command ||
 			e.Directory != entry.Directory ||
 			e.ExitCode != entry.ExitCode ||
@@ -78,7 +73,7 @@ func TestGetEntries(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	entries := []HistoryEntry{
+	entries := []histree.HistoryEntry{
 		{
 			Command:   "echo 'Hello, World!'",
 			Directory: "/home/user",
@@ -98,12 +93,12 @@ func TestGetEntries(t *testing.T) {
 	}
 
 	for _, entry := range entries {
-		if err := addEntry(db, &entry); err != nil {
+		if err := db.AddEntry(&entry); err != nil {
 			t.Fatalf("Failed to add entry: %v", err)
 		}
 	}
 
-	gotEntries, err := getEntries(db, 10, "/home/user")
+	gotEntries, err := db.GetEntries(10, "/home/user")
 	if err != nil {
 		t.Fatalf("Failed to get entries: %v", err)
 	}
@@ -129,7 +124,7 @@ func TestGetEntries(t *testing.T) {
 func TestFormatVerboseWithTimezone(t *testing.T) {
 	// Create a test entry with a fixed UTC time
 	fixedUTCTime := time.Date(2023, 5, 15, 12, 30, 0, 0, time.UTC)
-	entry := HistoryEntry{
+	entry := histree.HistoryEntry{
 		Command:   "echo 'timezone test'",
 		Directory: "/home/user/test",
 		Timestamp: fixedUTCTime,
@@ -140,7 +135,7 @@ func TestFormatVerboseWithTimezone(t *testing.T) {
 
 	// Test output with verbose format
 	var buf bytes.Buffer
-	if err := writeEntries([]HistoryEntry{entry}, &buf, FormatVerbose); err != nil {
+	if err := histree.WriteEntries([]histree.HistoryEntry{entry}, &buf, histree.FormatVerbose); err != nil {
 		t.Fatalf("Failed to write entries: %v", err)
 	}
 
@@ -149,7 +144,6 @@ func TestFormatVerboseWithTimezone(t *testing.T) {
 	// Expected output should have the local time, not UTC
 	localTime := fixedUTCTime.Local()
 	expectedTimePrefix := localTime.Format("2006-01-02T15:04:05")
-
 	if !strings.Contains(outputStr, expectedTimePrefix) {
 		t.Errorf("Expected output to contain local time %s, got: %s", expectedTimePrefix, outputStr)
 	}
@@ -190,7 +184,7 @@ func TestFormatVerboseWithSpecificTimezones(t *testing.T) {
 			}
 			time.Local = loc
 
-			entry := HistoryEntry{
+			entry := histree.HistoryEntry{
 				Command:   "echo 'timezone test'",
 				Directory: "/home/user/test",
 				Timestamp: fixedUTCTime,
@@ -200,7 +194,7 @@ func TestFormatVerboseWithSpecificTimezones(t *testing.T) {
 			}
 
 			var buf bytes.Buffer
-			if err := writeEntries([]HistoryEntry{entry}, &buf, FormatVerbose); err != nil {
+			if err := histree.WriteEntries([]histree.HistoryEntry{entry}, &buf, histree.FormatVerbose); err != nil {
 				t.Fatalf("Failed to write entries in timezone %s: %v", tc.tz, err)
 			}
 
