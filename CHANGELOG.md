@@ -1,3 +1,32 @@
+## v0.3.3
+### Features
+- **Library Support**: Refactored core functionality into a reusable Go library
+- **Go Get Support**: Project can now be installed via `go install` or imported as a library via `go get`
+- **API Documentation**: Added comprehensive documentation for library usage
+- **Performance Improvements**: Enhanced database query performance with optimized indexes
+- **Timezone Handling**: Improved handling of timestamps across different timezones
+
+### API Changes
+- Added public library package `github.com/ec/histree-core/pkg/histree`
+- Created stable API for database operations and formatting
+- Exported key types and constants for third-party integration
+
+### Bug Fixes
+- Fixed issue with timestamp display in different timezones
+- Improved error handling in database connections
+- Enhanced buffer management for large output sets
+
+### Installation
+#### Command-line tool
+```bash
+go install github.com/ec/histree-core/cmd/histree@latest
+```
+
+#### Library
+```bash
+go get github.com/ec/histree-core
+```
+
 ## v0.2.0
 
 ### Breaking Changes
