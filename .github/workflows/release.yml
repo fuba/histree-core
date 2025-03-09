@@ -39,8 +39,3 @@ jobs:
           ## Changes in ${{ steps.get_version.outputs.VERSION }}
 
           For a detailed list of changes, please see [CHANGELOG.md](CHANGELOG.md)
-
-          ### Installation
-          1. Download the `histree-core.tar.gz` file
-          2. Extract it: `tar xzf histree-core.tar.gz`
-          3. Move the binary to your PATH: `sudo mv bin/histree-core /usr/local/bin/`
