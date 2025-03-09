@@ -1,3 +1,8 @@
+## v0.3.4
+### Bug Fixes
+- Fixed incorrect URLs in documentation and package references
+- Updated GitHub username references from 'ec' to 'fuba'
+
 ## v0.3.3
 ### Features
 - **Library Support**: Refactored core functionality into a reusable Go library
@@ -7,7 +12,7 @@
 - **Timezone Handling**: Improved handling of timestamps across different timezones
 
 ### API Changes
-- Added public library package `github.com/ec/histree-core/pkg/histree`
+- Added public library package `github.com/fuba/histree-core/pkg/histree`
 - Created stable API for database operations and formatting
 - Exported key types and constants for third-party integration
 
@@ -19,12 +24,12 @@
 ### Installation
 #### Command-line tool
 ```bash
-go install github.com/ec/histree-core/cmd/histree@latest
+go install github.com/fuba/histree-core/cmd/histree-core@latest
 ```
 
 #### Library
 ```bash
-go get github.com/ec/histree-core
+go get github.com/fuba/histree-core
 ```
 
 ## v0.2.0

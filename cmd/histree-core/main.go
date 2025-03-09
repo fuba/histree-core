@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ec/histree-core/pkg/histree"
+	"github.com/fuba/histree-core/pkg/histree"
 )
 
 func main() {

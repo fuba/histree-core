@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ec/histree-core/pkg/histree"
+	"github.com/fuba/histree-core/pkg/histree"
 )
 
 func setupTestDB(t *testing.T) (*histree.DB, func()) {

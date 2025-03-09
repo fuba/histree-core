@@ -1,4 +1,4 @@
-module github.com/ec/histree-core
+module github.com/fuba/histree-core
 
 go 1.18
 
