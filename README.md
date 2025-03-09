@@ -29,7 +29,7 @@ This project was developed with the assistance of ChatGPT and GitHub Copilot.
 
 #### Go Install (recommended)
 ```sh
-go install github.com/fuba/histree-core/cmd/histree@latest
+go install github.com/fuba/histree-core/cmd/histree-core@latest
 ```
 
 #### Building from Source
