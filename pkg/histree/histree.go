@@ -11,7 +11,7 @@ import (
 
 // Version information
 const (
-	Version = "v0.3.4"
+	Version = "v0.3.5"
 )
 
 // OutputFormat defines how history entries are formatted when displayed
@@ -150,6 +150,42 @@ func (db *DB) AddEntry(entry *HistoryEntry) error {
 		return fmt.Errorf("failed to insert entry: %w", err)
 	}
 	return nil
+}
+
+// UpdatePaths updates directory paths in history entries from oldPath to newPath
+func (db *DB) UpdatePaths(oldPath, newPath string) (int64, error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Update entries where directory exactly matches oldPath
+	exactResult, err := tx.Exec(
+		"UPDATE history SET directory = ? WHERE directory = ?",
+		newPath, oldPath,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to update exact matches: %w", err)
+	}
+
+	// Update entries where directory is a subdirectory of oldPath
+	subResult, err := tx.Exec(
+		"UPDATE history SET directory = REPLACE(directory, ?, ?) WHERE directory LIKE ? || '/%'",
+		oldPath, newPath, oldPath,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to update subdirectory matches: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	// Get total number of rows affected by both updates
+	exactCount, _ := exactResult.RowsAffected()
+	subCount, _ := subResult.RowsAffected()
+	return exactCount + subCount, nil
 }
 
 // GetEntries retrieves command history entries from the database
