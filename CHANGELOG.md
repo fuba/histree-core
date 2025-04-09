@@ -1,3 +1,9 @@
+## v0.3.5
+### Features
+- **Path Updates**: Added new `update-path` action to update directory paths in history entries
+- Support for both exact path updates and subdirectory path updates
+- Automatic path standardization (absolute paths, cleanup)
+
 ## v0.3.4
 ### Bug Fixes
 - Fixed incorrect URLs in documentation and package references

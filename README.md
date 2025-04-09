@@ -15,6 +15,12 @@ This project was developed with the assistance of ChatGPT and GitHub Copilot.
 - **Directory-Aware History**  
   Commands are stored with their execution directory context, allowing you to view history specific to directories.
 
+- **Directory Path Updates**  
+  When you move or rename directories, you can update all related history entries:
+  - Updates both exact path matches and subdirectory paths
+  - Preserves your command history context when reorganizing your filesystem
+  - Handles relative paths automatically
+
 - **Shell Context Tracking**
   Each command is stored with its execution context:
   - Hostname of the machine
@@ -59,13 +65,15 @@ import "github.com/fuba/histree-core/pkg/histree"
 
 ```sh
 -db string      Path to SQLite database (required)
--action string  Action to perform: add or get
+-action string  Action to perform: add, get, or update-path
 -dir string     Current directory for filtering entries
 -format string  Output format: json, simple, or verbose (default "simple")
 -limit int      Number of entries to retrieve (default 100)
 -hostname       Hostname for command history (required for add action)
--pid           Process ID of the shell (required for add action)
+-pid            Process ID of the shell (required for add action)
 -exit int       Exit code of the command
+-old-path       Old directory path (required for update-path action)
+-new-path       New directory path (required for update-path action)
 -v              Show verbose output (same as -format verbose)
 ```
 
@@ -145,6 +153,16 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Failed to write entries: %v\n", err)
 		os.Exit(1)
 	}
+	
+	// Update directory paths (e.g., after moving directories)
+	oldPath := "/home/user/old-project-path"
+	newPath := "/home/user/new-project-path"
+	count, err := db.UpdatePaths(oldPath, newPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to update paths: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("Updated %d history entries\n", count)
 }
 ```
 
@@ -182,6 +200,18 @@ $ histree -v           # Different directory shows different history
 2024-02-15T10:35:00 [/home/user/another-project] vim README.md
 2024-02-15T10:35:30 [/home/user/another-project] git add README.md
 2024-02-15T10:36:00 [/home/user/another-project] git commit -m "Update README"
+
+$ # Now let's move a directory and update history
+$ mv ~/projects/web-app ~/projects/renamed-app
+$ histree-core -db ~/.histree.db -action update-path -old-path ~/projects/web-app -new-path ~/projects/renamed-app
+Updated 4 entries: /home/user/projects/web-app -> /home/user/projects/renamed-app
+
+$ cd ~/projects/renamed-app
+$ histree -v           # History is preserved with the new path
+2024-02-15T10:30:15 [/home/user/projects/renamed-app] npm install
+2024-02-15T10:31:20 [/home/user/projects/renamed-app] npm run build
+2024-02-15T10:31:45 [/home/user/projects/renamed-app/dist] ls -la
+2024-02-15T10:32:10 [/home/user/projects/renamed-app] git status
 ```
 
 This example demonstrates how histree helps track your development workflow across different directories and projects, maintaining the context of your work.

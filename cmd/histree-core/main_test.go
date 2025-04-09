@@ -208,3 +208,92 @@ func TestFormatVerboseWithSpecificTimezones(t *testing.T) {
 		})
 	}
 }
+
+// TestUpdatePaths tests the UpdatePaths functionality
+func TestUpdatePaths(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	// Define test paths
+	oldPath := "/home/user/oldpath"
+	newPath := "/home/user/newpath"
+	
+	// Create test entries with different paths
+	entries := []histree.HistoryEntry{
+		{
+			Command:   "cd /home/user/oldpath",
+			Directory: oldPath,
+			Timestamp: time.Now().UTC(),
+			ExitCode:  0,
+			Hostname:  "test-host",
+			ProcessID: 12345,
+		},
+		{
+			Command:   "ls -la",
+			Directory: oldPath + "/subdir",
+			Timestamp: time.Now().UTC(),
+			ExitCode:  0,
+			Hostname:  "test-host",
+			ProcessID: 12345,
+		},
+		{
+			Command:   "echo 'unrelated'",
+			Directory: "/tmp",
+			Timestamp: time.Now().UTC(),
+			ExitCode:  0,
+			Hostname:  "test-host",
+			ProcessID: 12345,
+		},
+	}
+
+	// Add test entries
+	for _, entry := range entries {
+		if err := db.AddEntry(&entry); err != nil {
+			t.Fatalf("Failed to add test entry: %v", err)
+		}
+	}
+
+	// Update paths
+	count, err := db.UpdatePaths(oldPath, newPath)
+	if err != nil {
+		t.Fatalf("Failed to update paths: %v", err)
+	}
+
+	// Should have updated 2 entries (main path and subdirectory)
+	if count != 2 {
+		t.Errorf("Expected 2 entries to be updated, got %d", count)
+	}
+
+	// Verify the updates
+	rows, err := db.Query("SELECT directory FROM history ORDER BY id")
+	if err != nil {
+		t.Fatalf("Failed to query entries: %v", err)
+	}
+	defer rows.Close()
+
+	var updatedDirs []string
+	for rows.Next() {
+		var dir string
+		if err := rows.Scan(&dir); err != nil {
+			t.Fatalf("Failed to scan row: %v", err)
+		}
+		updatedDirs = append(updatedDirs, dir)
+	}
+
+	// Check the expected path changes
+	expectedDirs := []string{
+		newPath,                // oldPath should now be newPath
+		newPath + "/subdir",    // oldPath/subdir should now be newPath/subdir
+		"/tmp",                 // Unrelated path should remain unchanged
+	}
+
+	if len(updatedDirs) != len(expectedDirs) {
+		t.Fatalf("Expected %d entries, got %d", len(expectedDirs), len(updatedDirs))
+	}
+
+	for i, expected := range expectedDirs {
+		if updatedDirs[i] != expected {
+			t.Errorf("Entry %d: expected directory %q, got %q", i, expected, updatedDirs[i])
+		}
+	}
+}
