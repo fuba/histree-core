@@ -4,6 +4,9 @@ package histree
 import (
 	"database/sql"
 	"fmt"
+	"os"
+	"path/filepath"
+	"syscall"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -39,6 +42,7 @@ type HistoryEntry struct {
 // DB represents a histree database connection
 type DB struct {
 	*sql.DB
+	path string
 }
 
 // OpenDB initializes and returns a new database connection
@@ -58,7 +62,7 @@ func OpenDB(dbPath string) (*DB, error) {
 		return nil, err
 	}
 
-	return &DB{db}, nil
+	return &DB{DB: db, path: dbPath}, nil
 }
 
 // Close closes the database connection
@@ -137,7 +141,16 @@ func createIndexes(tx *sql.Tx) error {
 
 // AddEntry adds a new command history entry to the database
 func (db *DB) AddEntry(entry *HistoryEntry) error {
-	_, err := db.Exec(
+	hasSpace, err := checkDiskSpace(db.path)
+	if err != nil {
+		return fmt.Errorf("failed to check disk space: %w", err)
+	}
+
+	if !hasSpace {
+		return nil
+	}
+
+	if _, err := db.Exec(
 		"INSERT INTO history (command, directory, timestamp, exit_code, hostname, process_id) VALUES (?, ?, ?, ?, ?, ?)",
 		entry.Command,
 		entry.Directory,
@@ -145,11 +158,60 @@ func (db *DB) AddEntry(entry *HistoryEntry) error {
 		entry.ExitCode,
 		entry.Hostname,
 		entry.ProcessID,
-	)
-	if err != nil {
+	); err != nil {
 		return fmt.Errorf("failed to insert entry: %w", err)
 	}
+
 	return nil
+}
+
+var checkDiskSpace = hasSufficientDiskSpace
+
+// SetDiskSpaceChecker allows tests to override the disk space check logic.
+// Passing nil restores the default checker.
+func SetDiskSpaceChecker(fn func(string) (bool, error)) {
+	if fn == nil {
+		checkDiskSpace = hasSufficientDiskSpace
+		return
+	}
+	checkDiskSpace = fn
+}
+
+func hasSufficientDiskSpace(dbPath string) (bool, error) {
+	dir := filepath.Dir(dbPath)
+	if dir == "" {
+		dir = "."
+	}
+
+	if err := ensureDirExists(dir); err != nil {
+		return false, err
+	}
+
+	var stat syscall.Statfs_t
+	if err := syscall.Statfs(dir, &stat); err != nil {
+		return false, fmt.Errorf("failed to stat filesystem: %w", err)
+	}
+
+	return stat.Bavail > 0, nil
+}
+
+func ensureDirExists(dir string) error {
+	info, err := os.Stat(dir)
+	if err == nil {
+		if !info.IsDir() {
+			return fmt.Errorf("path %s is not a directory", dir)
+		}
+		return nil
+	}
+
+	if os.IsNotExist(err) {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", dir, err)
+		}
+		return nil
+	}
+
+	return fmt.Errorf("failed to access directory %s: %w", dir, err)
 }
 
 // UpdatePaths updates directory paths in history entries from oldPath to newPath

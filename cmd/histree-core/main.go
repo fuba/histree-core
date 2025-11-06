@@ -73,7 +73,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Failed to get entries: %v\n", err)
 			os.Exit(1)
 		}
-		
+
 	case "update-path":
 		if *oldPath == "" || *newPath == "" {
 			fmt.Fprintf(os.Stderr, "Error: both -old-path and -new-path parameters are required for update-path action\n")
@@ -137,7 +137,7 @@ func handleUpdatePath(db *histree.DB, oldPath, newPath string) error {
 		}
 		oldPath = absOldPath
 	}
-	
+
 	if !filepath.IsAbs(newPath) {
 		absNewPath, err := filepath.Abs(newPath)
 		if err != nil {
@@ -145,17 +145,17 @@ func handleUpdatePath(db *histree.DB, oldPath, newPath string) error {
 		}
 		newPath = absNewPath
 	}
-	
+
 	// Clean the paths to ensure consistent format
 	oldPath = filepath.Clean(oldPath)
 	newPath = filepath.Clean(newPath)
-	
+
 	// Update the paths in the database
 	count, err := db.UpdatePaths(oldPath, newPath)
 	if err != nil {
 		return err
 	}
-	
+
 	fmt.Printf("Updated %d entries: %s -> %s\n", count, oldPath, newPath)
 	return nil
 }

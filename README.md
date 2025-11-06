@@ -15,11 +15,16 @@ This project was developed with the assistance of ChatGPT and GitHub Copilot.
 - **Directory-Aware History**  
   Commands are stored with their execution directory context, allowing you to view history specific to directories.
 
-- **Directory Path Updates**  
+- **Directory Path Updates**
   When you move or rename directories, you can update all related history entries:
   - Updates both exact path matches and subdirectory paths
   - Preserves your command history context when reorganizing your filesystem
   - Handles relative paths automatically
+
+- **Retention Controls & Safety Policies**
+  - Configure how many history records to keep with the `-max-entries` flag
+  - Automatically prunes the oldest records when the limit is exceeded
+  - Skips writing new history entries when no disk space is available, preventing repeated command errors
 
 - **Shell Context Tracking**
   Each command is stored with its execution context:
@@ -69,6 +74,7 @@ import "github.com/fuba/histree-core/pkg/histree"
 -dir string     Current directory for filtering entries
 -format string  Output format: json, simple, or verbose (default "simple")
 -limit int      Number of entries to retrieve (default 100)
+-max-entries int  Maximum number of history entries to keep (0 for unlimited)
 -hostname       Hostname for command history (required for add action)
 -pid            Process ID of the shell (required for add action)
 -exit int       Exit code of the command
