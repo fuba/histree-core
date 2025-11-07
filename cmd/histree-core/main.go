@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -64,6 +65,11 @@ func main() {
 			os.Exit(1)
 		}
 		if err := handleAdd(db, *currentDir, *hostname, *processID, *exitCode); err != nil {
+			if errors.Is(err, histree.ErrInsufficientDiskSpace) {
+				fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
+				return
+			}
+
 			fmt.Fprintf(os.Stderr, "Failed to add entry: %v\n", err)
 			os.Exit(1)
 		}

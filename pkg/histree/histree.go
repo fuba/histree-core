@@ -3,10 +3,11 @@ package histree
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"syscall"
+	"sync"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -47,6 +48,15 @@ type DB struct {
 
 // OpenDB initializes and returns a new database connection
 func OpenDB(dbPath string) (*DB, error) {
+	dir := filepath.Dir(dbPath)
+	if dir == "" {
+		dir = "."
+	}
+
+	if err := ensureDirExists(dir); err != nil {
+		return nil, err
+	}
+
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
@@ -69,6 +79,15 @@ func OpenDB(dbPath string) (*DB, error) {
 func (db *DB) Close() error {
 	return db.DB.Close()
 }
+
+// ErrInsufficientDiskSpace indicates that no additional history entries can be recorded
+// because the underlying filesystem has no free space available.
+var ErrInsufficientDiskSpace = errors.New("insufficient disk space for history entry")
+
+var (
+	diskSpaceCheckerMu sync.RWMutex
+	diskSpaceCheckerFn = hasSufficientDiskSpace
+)
 
 func setPragmas(db *sql.DB) error {
 	_, err := db.Exec(`
@@ -147,7 +166,7 @@ func (db *DB) AddEntry(entry *HistoryEntry) error {
 	}
 
 	if !hasSpace {
-		return nil
+		return fmt.Errorf("%w: unable to record command history entry in %s", ErrInsufficientDiskSpace, db.path)
 	}
 
 	if _, err := db.Exec(
@@ -164,17 +183,23 @@ func (db *DB) AddEntry(entry *HistoryEntry) error {
 
 	return nil
 }
-
-var checkDiskSpace = hasSufficientDiskSpace
+func checkDiskSpace(dbPath string) (bool, error) {
+	diskSpaceCheckerMu.RLock()
+	checker := diskSpaceCheckerFn
+	diskSpaceCheckerMu.RUnlock()
+	return checker(dbPath)
+}
 
 // SetDiskSpaceChecker allows tests to override the disk space check logic.
 // Passing nil restores the default checker.
 func SetDiskSpaceChecker(fn func(string) (bool, error)) {
+	diskSpaceCheckerMu.Lock()
+	defer diskSpaceCheckerMu.Unlock()
 	if fn == nil {
-		checkDiskSpace = hasSufficientDiskSpace
+		diskSpaceCheckerFn = hasSufficientDiskSpace
 		return
 	}
-	checkDiskSpace = fn
+	diskSpaceCheckerFn = fn
 }
 
 func hasSufficientDiskSpace(dbPath string) (bool, error) {
@@ -183,16 +208,19 @@ func hasSufficientDiskSpace(dbPath string) (bool, error) {
 		dir = "."
 	}
 
-	if err := ensureDirExists(dir); err != nil {
-		return false, err
+	info, err := os.Stat(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, fmt.Errorf("database directory %s does not exist", dir)
+		}
+		return false, fmt.Errorf("failed to access database directory %s: %w", dir, err)
 	}
 
-	var stat syscall.Statfs_t
-	if err := syscall.Statfs(dir, &stat); err != nil {
-		return false, fmt.Errorf("failed to stat filesystem: %w", err)
+	if !info.IsDir() {
+		return false, fmt.Errorf("path %s is not a directory", dir)
 	}
 
-	return stat.Bavail > 0, nil
+	return platformHasSufficientDiskSpace(dir)
 }
 
 func ensureDirExists(dir string) error {

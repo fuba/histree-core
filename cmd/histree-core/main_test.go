@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -119,7 +120,7 @@ func TestGetEntries(t *testing.T) {
 	}
 }
 
-func TestAddEntrySkipsWhenNoDiskSpace(t *testing.T) {
+func TestAddEntryErrorsWhenNoDiskSpace(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
@@ -137,8 +138,9 @@ func TestAddEntrySkipsWhenNoDiskSpace(t *testing.T) {
 		ProcessID: 12345,
 	}
 
-	if err := db.AddEntry(&entry); err != nil {
-		t.Fatalf("expected no error when disk full, got %v", err)
+	err := db.AddEntry(&entry)
+	if !errors.Is(err, histree.ErrInsufficientDiskSpace) {
+		t.Fatalf("expected ErrInsufficientDiskSpace, got %v", err)
 	}
 
 	var count int
