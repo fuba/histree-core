@@ -209,15 +209,18 @@ func hasSufficientDiskSpace(dbPath string) (bool, error) {
 	}
 
 	info, err := os.Stat(dir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false, fmt.Errorf("database directory %s does not exist", dir)
+	switch {
+	case err == nil:
+		if !info.IsDir() {
+			// If the path resolves to a file instead of a directory, proceeding would corrupt the
+			// database; surface an error immediately.
+			return false, fmt.Errorf("path %s is not a directory", dir)
 		}
+	case os.IsNotExist(err):
+		// OpenDB calls ensureDirExists before reaching this point, so a missing directory indicates
+		// a concurrent deletion. Allow the platform-specific probe to report disk status.
+	default:
 		return false, fmt.Errorf("failed to access database directory %s: %w", dir, err)
-	}
-
-	if !info.IsDir() {
-		return false, fmt.Errorf("path %s is not a directory", dir)
 	}
 
 	return platformHasSufficientDiskSpace(dir)
