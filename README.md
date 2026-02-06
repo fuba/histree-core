@@ -15,11 +15,16 @@ This project was developed with the assistance of ChatGPT and GitHub Copilot.
 - **Directory-Aware History**  
   Commands are stored with their execution directory context, allowing you to view history specific to directories.
 
-- **Directory Path Updates**  
+- **Directory Path Updates**
   When you move or rename directories, you can update all related history entries:
   - Updates both exact path matches and subdirectory paths
   - Preserves your command history context when reorganizing your filesystem
   - Handles relative paths automatically
+
+- **Disk Space Safety Policy**
+  - Warns when disk space falls below 10MB
+  - Blocks writes when disk space falls below 1MB (to prevent SQLite corruption)
+  - Handles edge cases gracefully (symlinks, deleted directories, in-memory databases)
 
 - **Shell Context Tracking**
   Each command is stored with its execution context:

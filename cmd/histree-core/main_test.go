@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -119,6 +120,39 @@ func TestGetEntries(t *testing.T) {
 	}
 }
 
+func TestAddEntryErrorsWhenNoDiskSpace(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	histree.SetDiskSpaceChecker(func(string) (bool, error) {
+		return false, nil
+	})
+	defer histree.SetDiskSpaceChecker(nil)
+
+	entry := histree.HistoryEntry{
+		Command:   "should-not-be-inserted",
+		Directory: "/home/user",
+		Timestamp: time.Now().UTC(),
+		ExitCode:  0,
+		Hostname:  "test-host",
+		ProcessID: 12345,
+	}
+
+	err := db.AddEntry(&entry)
+	if !errors.Is(err, histree.ErrInsufficientDiskSpace) {
+		t.Fatalf("expected ErrInsufficientDiskSpace, got %v", err)
+	}
+
+	var count int
+	if err := db.QueryRow("SELECT COUNT(*) FROM history").Scan(&count); err != nil {
+		t.Fatalf("failed to count entries: %v", err)
+	}
+
+	if count != 0 {
+		t.Fatalf("expected 0 entries when disk full, got %d", count)
+	}
+}
+
 // TestFormatVerboseWithTimezone tests that the FormatVerbose output
 // correctly converts UTC timestamps to local timezone
 func TestFormatVerboseWithTimezone(t *testing.T) {
@@ -217,7 +251,7 @@ func TestUpdatePaths(t *testing.T) {
 	// Define test paths
 	oldPath := "/home/user/oldpath"
 	newPath := "/home/user/newpath"
-	
+
 	// Create test entries with different paths
 	entries := []histree.HistoryEntry{
 		{
@@ -282,9 +316,9 @@ func TestUpdatePaths(t *testing.T) {
 
 	// Check the expected path changes
 	expectedDirs := []string{
-		newPath,                // oldPath should now be newPath
-		newPath + "/subdir",    // oldPath/subdir should now be newPath/subdir
-		"/tmp",                 // Unrelated path should remain unchanged
+		newPath,             // oldPath should now be newPath
+		newPath + "/subdir", // oldPath/subdir should now be newPath/subdir
+		"/tmp",              // Unrelated path should remain unchanged
 	}
 
 	if len(updatedDirs) != len(expectedDirs) {

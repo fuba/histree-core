@@ -3,7 +3,11 @@ package histree
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"sync"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -39,10 +43,20 @@ type HistoryEntry struct {
 // DB represents a histree database connection
 type DB struct {
 	*sql.DB
+	path string
 }
 
 // OpenDB initializes and returns a new database connection
 func OpenDB(dbPath string) (*DB, error) {
+	dir := filepath.Dir(dbPath)
+	if dir == "" {
+		dir = "."
+	}
+
+	if err := ensureDirExists(dir); err != nil {
+		return nil, err
+	}
+
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
@@ -58,13 +72,81 @@ func OpenDB(dbPath string) (*DB, error) {
 		return nil, err
 	}
 
-	return &DB{db}, nil
+	return &DB{DB: db, path: dbPath}, nil
 }
 
 // Close closes the database connection
 func (db *DB) Close() error {
 	return db.DB.Close()
 }
+
+// CheckDiskSpaceWarning checks if disk space is running low (but not yet critical).
+// Returns a warning if space is below the warning threshold but above the critical threshold.
+// Returns nil if there's plenty of space or if the check cannot be performed.
+func (db *DB) CheckDiskSpaceWarning() *DiskSpaceWarning {
+	// Skip for in-memory databases
+	if db.path == ":memory:" || db.path == "" {
+		return nil
+	}
+
+	dir := filepath.Dir(db.path)
+	if dir == "" {
+		dir = "."
+	}
+
+	// Try to resolve symlinks
+	if resolvedDir, err := filepath.EvalSymlinks(dir); err == nil {
+		dir = resolvedDir
+	}
+
+	// Check if directory exists
+	if _, err := os.Stat(dir); err != nil {
+		return nil // Can't check, don't warn
+	}
+
+	shouldWarn, availableBytes, err := platformShouldWarnDiskSpace(dir)
+	if err != nil {
+		return nil // Can't check, don't warn
+	}
+
+	if shouldWarn {
+		return &DiskSpaceWarning{AvailableBytes: availableBytes}
+	}
+	return nil
+}
+
+// ErrInsufficientDiskSpace indicates that no additional history entries can be recorded
+// because the underlying filesystem has no free space available.
+var ErrInsufficientDiskSpace = errors.New("insufficient disk space for history entry")
+
+// DiskSpaceWarning contains information about low disk space conditions.
+type DiskSpaceWarning struct {
+	AvailableBytes uint64
+}
+
+// FormatBytes returns a human-readable string representation of bytes.
+func FormatBytes(bytes uint64) string {
+	const (
+		KB = 1024
+		MB = KB * 1024
+		GB = MB * 1024
+	)
+	switch {
+	case bytes >= GB:
+		return fmt.Sprintf("%.1f GB", float64(bytes)/GB)
+	case bytes >= MB:
+		return fmt.Sprintf("%.1f MB", float64(bytes)/MB)
+	case bytes >= KB:
+		return fmt.Sprintf("%.1f KB", float64(bytes)/KB)
+	default:
+		return fmt.Sprintf("%d bytes", bytes)
+	}
+}
+
+var (
+	diskSpaceCheckerMu sync.RWMutex
+	diskSpaceCheckerFn = hasSufficientDiskSpace
+)
 
 func setPragmas(db *sql.DB) error {
 	_, err := db.Exec(`
@@ -137,7 +219,16 @@ func createIndexes(tx *sql.Tx) error {
 
 // AddEntry adds a new command history entry to the database
 func (db *DB) AddEntry(entry *HistoryEntry) error {
-	_, err := db.Exec(
+	hasSpace, err := checkDiskSpace(db.path)
+	if err != nil {
+		return fmt.Errorf("failed to check disk space: %w", err)
+	}
+
+	if !hasSpace {
+		return fmt.Errorf("%w: unable to record command history entry in %s", ErrInsufficientDiskSpace, db.path)
+	}
+
+	if _, err := db.Exec(
 		"INSERT INTO history (command, directory, timestamp, exit_code, hostname, process_id) VALUES (?, ?, ?, ?, ?, ?)",
 		entry.Command,
 		entry.Directory,
@@ -145,11 +236,113 @@ func (db *DB) AddEntry(entry *HistoryEntry) error {
 		entry.ExitCode,
 		entry.Hostname,
 		entry.ProcessID,
-	)
-	if err != nil {
+	); err != nil {
 		return fmt.Errorf("failed to insert entry: %w", err)
 	}
+
 	return nil
+}
+func checkDiskSpace(dbPath string) (bool, error) {
+	diskSpaceCheckerMu.RLock()
+	checker := diskSpaceCheckerFn
+	diskSpaceCheckerMu.RUnlock()
+	return checker(dbPath)
+}
+
+// SetDiskSpaceChecker allows tests to override the disk space check logic.
+// Passing nil restores the default checker.
+func SetDiskSpaceChecker(fn func(string) (bool, error)) {
+	diskSpaceCheckerMu.Lock()
+	defer diskSpaceCheckerMu.Unlock()
+	if fn == nil {
+		diskSpaceCheckerFn = hasSufficientDiskSpace
+		return
+	}
+	diskSpaceCheckerFn = fn
+}
+
+func hasSufficientDiskSpace(dbPath string) (bool, error) {
+	// Skip disk space check for in-memory databases
+	if dbPath == ":memory:" || dbPath == "" {
+		return true, nil
+	}
+
+	dir := filepath.Dir(dbPath)
+	if dir == "" {
+		dir = "."
+	}
+
+	// Try to resolve symlinks to check the actual filesystem
+	if resolvedDir, err := filepath.EvalSymlinks(dir); err == nil {
+		dir = resolvedDir
+	}
+	// If symlink resolution fails, continue with original path
+
+	info, err := os.Stat(dir)
+	switch {
+	case err == nil:
+		if !info.IsDir() {
+			// If the path resolves to a file instead of a directory, proceeding would corrupt the
+			// database; surface an error immediately.
+			return false, fmt.Errorf("path %s is not a directory", dir)
+		}
+	case os.IsNotExist(err):
+		// Directory doesn't exist (possibly deleted after OpenDB).
+		// Try to find an existing parent directory to check disk space.
+		if parent := findExistingParent(dir); parent != "" {
+			dir = parent
+		} else {
+			// Cannot determine disk space - allow write to avoid blocking history
+			return true, nil
+		}
+	default:
+		// Other errors (permission denied, etc.) - allow write to avoid blocking history
+		// as history recording is not a critical operation
+		return true, nil
+	}
+
+	hasSpace, err := platformHasSufficientDiskSpace(dir)
+	if err != nil {
+		// If we can't determine disk space, allow write rather than blocking
+		return true, nil
+	}
+	return hasSpace, nil
+}
+
+// findExistingParent traverses up the directory tree to find an existing parent directory.
+// Returns empty string if no existing parent can be found.
+func findExistingParent(dir string) string {
+	for {
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			// Reached root or can't go higher
+			break
+		}
+		if info, err := os.Stat(parent); err == nil && info.IsDir() {
+			return parent
+		}
+		dir = parent
+	}
+	return ""
+}
+
+func ensureDirExists(dir string) error {
+	info, err := os.Stat(dir)
+	if err == nil {
+		if !info.IsDir() {
+			return fmt.Errorf("path %s is not a directory", dir)
+		}
+		return nil
+	}
+
+	if os.IsNotExist(err) {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", dir, err)
+		}
+		return nil
+	}
+
+	return fmt.Errorf("failed to access directory %s: %w", dir, err)
 }
 
 // UpdatePaths updates directory paths in history entries from oldPath to newPath
