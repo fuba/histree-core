@@ -203,10 +203,21 @@ func SetDiskSpaceChecker(fn func(string) (bool, error)) {
 }
 
 func hasSufficientDiskSpace(dbPath string) (bool, error) {
+	// Skip disk space check for in-memory databases
+	if dbPath == ":memory:" || dbPath == "" {
+		return true, nil
+	}
+
 	dir := filepath.Dir(dbPath)
 	if dir == "" {
 		dir = "."
 	}
+
+	// Try to resolve symlinks to check the actual filesystem
+	if resolvedDir, err := filepath.EvalSymlinks(dir); err == nil {
+		dir = resolvedDir
+	}
+	// If symlink resolution fails, continue with original path
 
 	info, err := os.Stat(dir)
 	switch {
@@ -217,13 +228,43 @@ func hasSufficientDiskSpace(dbPath string) (bool, error) {
 			return false, fmt.Errorf("path %s is not a directory", dir)
 		}
 	case os.IsNotExist(err):
-		// OpenDB calls ensureDirExists before reaching this point, so a missing directory indicates
-		// a concurrent deletion. Allow the platform-specific probe to report disk status.
+		// Directory doesn't exist (possibly deleted after OpenDB).
+		// Try to find an existing parent directory to check disk space.
+		if parent := findExistingParent(dir); parent != "" {
+			dir = parent
+		} else {
+			// Cannot determine disk space - allow write to avoid blocking history
+			return true, nil
+		}
 	default:
-		return false, fmt.Errorf("failed to access database directory %s: %w", dir, err)
+		// Other errors (permission denied, etc.) - allow write to avoid blocking history
+		// as history recording is not a critical operation
+		return true, nil
 	}
 
-	return platformHasSufficientDiskSpace(dir)
+	hasSpace, err := platformHasSufficientDiskSpace(dir)
+	if err != nil {
+		// If we can't determine disk space, allow write rather than blocking
+		return true, nil
+	}
+	return hasSpace, nil
+}
+
+// findExistingParent traverses up the directory tree to find an existing parent directory.
+// Returns empty string if no existing parent can be found.
+func findExistingParent(dir string) string {
+	for {
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			// Reached root or can't go higher
+			break
+		}
+		if info, err := os.Stat(parent); err == nil && info.IsDir() {
+			return parent
+		}
+		dir = parent
+	}
+	return ""
 }
 
 func ensureDirExists(dir string) error {
