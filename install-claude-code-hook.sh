@@ -30,53 +30,49 @@ echo "  database: $HISTREE_DB"
 # Create hooks directory
 mkdir -p "$HOOKS_DIR"
 
-# Create hook script
-cat > "$HOOK_SCRIPT" << 'HOOKEOF'
+# Create hook script (use heredoc with variable expansion for paths)
+cat > "$HOOK_SCRIPT" << HOOKEOF
 #!/bin/bash
 # Hook script to record Claude Code's Bash commands to histree
 # This script is called by Claude Code after each Bash command execution
 
 # Read JSON input from stdin
-INPUT=$(cat)
+INPUT=\$(cat)
 
 # Extract command, exit code, and working directory
-COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
-EXIT_CODE=$(echo "$INPUT" | jq -r '.tool_response.exit_code // 0')
-CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
-SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // "unknown"')
+COMMAND=\$(echo "\$INPUT" | jq -r '.tool_input.command // empty')
+EXIT_CODE=\$(echo "\$INPUT" | jq -r '.tool_response.exit_code // 0')
+CWD=\$(echo "\$INPUT" | jq -r '.cwd // empty')
+SESSION_ID=\$(echo "\$INPUT" | jq -r '.session_id // "unknown"')
 
 # Skip if command is empty
-if [ -z "$COMMAND" ]; then
+if [ -z "\$COMMAND" ]; then
     exit 0
 fi
 
 # Get hostname
-HOSTNAME=$(hostname)
+HOSTNAME=\$(hostname)
 
-# Path to histree-core and database (will be replaced by installer)
-HISTREE_CORE="__HISTREE_CORE__"
-HISTREE_DB="__HISTREE_DB__"
+# Path to histree-core and database
+HISTREE_CORE="$HISTREE_CORE"
+HISTREE_DB="$HISTREE_DB"
 
 # Record to histree (using session_id hash as pid to group related commands)
 # Use a pseudo-PID based on session_id to group Claude Code commands
-PSEUDO_PID=$(echo "$SESSION_ID" | cksum | awk '{print $1 % 100000 + 900000}')
+PSEUDO_PID=\$(echo "\$SESSION_ID" | cksum | awk '{print \$1 % 100000 + 900000}')
 
-echo "$COMMAND" | "$HISTREE_CORE" \
-    -db "$HISTREE_DB" \
-    -action add \
-    -hostname "${HOSTNAME}:claude" \
-    -pid "$PSEUDO_PID" \
-    -dir "$CWD" \
-    -exit "$EXIT_CODE" \
+echo "\$COMMAND" | "\$HISTREE_CORE" \\
+    -db "\$HISTREE_DB" \\
+    -action add \\
+    -hostname "\${HOSTNAME}:claude" \\
+    -pid "\$PSEUDO_PID" \\
+    -dir "\$CWD" \\
+    -exit "\$EXIT_CODE" \\
     2>/dev/null
 
 # Always exit 0 to not block Claude Code
 exit 0
 HOOKEOF
-
-# Replace placeholders with actual paths
-sed -i "s|__HISTREE_CORE__|$HISTREE_CORE|g" "$HOOK_SCRIPT"
-sed -i "s|__HISTREE_DB__|$HISTREE_DB|g" "$HOOK_SCRIPT"
 
 # Make executable
 chmod +x "$HOOK_SCRIPT"
