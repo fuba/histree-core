@@ -216,6 +216,35 @@ $ histree -v           # History is preserved with the new path
 
 This example demonstrates how histree helps track your development workflow across different directories and projects, maintaining the context of your work.
 
+## Claude Code Integration
+
+You can automatically record commands executed by [Claude Code](https://claude.ai/code) using the provided hook script.
+
+### Installation
+
+```sh
+./install-claude-code-hook.sh
+```
+
+This will:
+1. Create a hook script at `~/.claude/hooks/post-bash-histree.sh`
+2. Add the PostToolUse hook configuration to `~/.claude/settings.json`
+
+After installation, restart Claude Code to activate the hook.
+
+### Features
+
+- Commands are recorded with hostname suffix `:claude` (e.g., `myhost:claude`) for easy filtering
+- Session-based pseudo-PID groups related commands together
+- Exit codes are tracked
+
+### View Claude Code History
+
+```sh
+# Show only Claude Code commands
+histree-core -db ~/.histree.db -action get -v | grep :claude
+```
+
 ## Requirements
 
 - Go 1.18 or later (for building the binary and using as a library)
