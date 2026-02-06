@@ -80,9 +80,68 @@ func (db *DB) Close() error {
 	return db.DB.Close()
 }
 
+// CheckDiskSpaceWarning checks if disk space is running low (but not yet critical).
+// Returns a warning if space is below the warning threshold but above the critical threshold.
+// Returns nil if there's plenty of space or if the check cannot be performed.
+func (db *DB) CheckDiskSpaceWarning() *DiskSpaceWarning {
+	// Skip for in-memory databases
+	if db.path == ":memory:" || db.path == "" {
+		return nil
+	}
+
+	dir := filepath.Dir(db.path)
+	if dir == "" {
+		dir = "."
+	}
+
+	// Try to resolve symlinks
+	if resolvedDir, err := filepath.EvalSymlinks(dir); err == nil {
+		dir = resolvedDir
+	}
+
+	// Check if directory exists
+	if _, err := os.Stat(dir); err != nil {
+		return nil // Can't check, don't warn
+	}
+
+	shouldWarn, availableBytes, err := platformShouldWarnDiskSpace(dir)
+	if err != nil {
+		return nil // Can't check, don't warn
+	}
+
+	if shouldWarn {
+		return &DiskSpaceWarning{AvailableBytes: availableBytes}
+	}
+	return nil
+}
+
 // ErrInsufficientDiskSpace indicates that no additional history entries can be recorded
 // because the underlying filesystem has no free space available.
 var ErrInsufficientDiskSpace = errors.New("insufficient disk space for history entry")
+
+// DiskSpaceWarning contains information about low disk space conditions.
+type DiskSpaceWarning struct {
+	AvailableBytes uint64
+}
+
+// FormatBytes returns a human-readable string representation of bytes.
+func FormatBytes(bytes uint64) string {
+	const (
+		KB = 1024
+		MB = KB * 1024
+		GB = MB * 1024
+	)
+	switch {
+	case bytes >= GB:
+		return fmt.Sprintf("%.1f GB", float64(bytes)/GB)
+	case bytes >= MB:
+		return fmt.Sprintf("%.1f MB", float64(bytes)/MB)
+	case bytes >= KB:
+		return fmt.Sprintf("%.1f KB", float64(bytes)/KB)
+	default:
+		return fmt.Sprintf("%d bytes", bytes)
+	}
+}
 
 var (
 	diskSpaceCheckerMu sync.RWMutex

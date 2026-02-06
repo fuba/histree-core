@@ -190,3 +190,64 @@ func TestSetDiskSpaceChecker(t *testing.T) {
 	diskSpaceCheckerFn = originalChecker
 	diskSpaceCheckerMu.Unlock()
 }
+
+func TestFormatBytes(t *testing.T) {
+	tests := []struct {
+		bytes    uint64
+		expected string
+	}{
+		{0, "0 bytes"},
+		{512, "512 bytes"},
+		{1024, "1.0 KB"},
+		{1536, "1.5 KB"},
+		{1024 * 1024, "1.0 MB"},
+		{1024 * 1024 * 10, "10.0 MB"},
+		{1024 * 1024 * 1024, "1.0 GB"},
+		{1024 * 1024 * 1024 * 2, "2.0 GB"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.expected, func(t *testing.T) {
+			result := FormatBytes(tc.bytes)
+			if result != tc.expected {
+				t.Errorf("FormatBytes(%d) = %q, want %q", tc.bytes, result, tc.expected)
+			}
+		})
+	}
+}
+
+func TestCheckDiskSpaceWarning_MemoryDB(t *testing.T) {
+	// In-memory database should not produce warnings
+	db := &DB{path: ":memory:"}
+	warning := db.CheckDiskSpaceWarning()
+	if warning != nil {
+		t.Error("expected no warning for :memory: database")
+	}
+}
+
+func TestCheckDiskSpaceWarning_EmptyPath(t *testing.T) {
+	// Empty path should not produce warnings
+	db := &DB{path: ""}
+	warning := db.CheckDiskSpaceWarning()
+	if warning != nil {
+		t.Error("expected no warning for empty path")
+	}
+}
+
+func TestDiskSpaceThresholds(t *testing.T) {
+	// Verify threshold constants are sensible
+	if minFreeDiskBytes >= warnFreeDiskBytes {
+		t.Errorf("minFreeDiskBytes (%d) should be less than warnFreeDiskBytes (%d)",
+			minFreeDiskBytes, warnFreeDiskBytes)
+	}
+
+	// Verify minimum is at least 1MB
+	if minFreeDiskBytes < 1024*1024 {
+		t.Errorf("minFreeDiskBytes (%d) should be at least 1MB", minFreeDiskBytes)
+	}
+
+	// Verify warning threshold is reasonable (at least 5MB)
+	if warnFreeDiskBytes < 5*1024*1024 {
+		t.Errorf("warnFreeDiskBytes (%d) should be at least 5MB", warnFreeDiskBytes)
+	}
+}

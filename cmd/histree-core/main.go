@@ -74,6 +74,12 @@ func main() {
 			os.Exit(1)
 		}
 
+		// Check for low disk space warning after successful write
+		if warning := db.CheckDiskSpaceWarning(); warning != nil {
+			fmt.Fprintf(os.Stderr, "Warning: Low disk space (%s remaining). History recording may fail soon.\n",
+				histree.FormatBytes(warning.AvailableBytes))
+		}
+
 	case "get":
 		if err := handleGet(db, *limit, *currentDir, histree.OutputFormat(*format)); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to get entries: %v\n", err)
