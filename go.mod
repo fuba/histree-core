@@ -1,5 +1,7 @@
 module github.com/fuba/histree-core
 
-go 1.18
+go 1.21
 
-require github.com/mattn/go-sqlite3 v1.14.17
+toolchain go1.24.7
+
+require github.com/mattn/go-sqlite3 v1.14.49
